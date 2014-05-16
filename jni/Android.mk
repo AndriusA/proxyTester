@@ -16,9 +16,9 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-
 TCPTESTER_SOURCES := \
         raw_socket_tester.cpp \
+        util.cpp \
         testsuite.cpp
 
 LOCAL_MODULE    := tcptester
@@ -28,3 +28,16 @@ LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog -pthread
 LOCAL_SRC_FILES := $(TCPTESTER_SOURCES)
 
 include $(BUILD_EXECUTABLE)
+
+#
+#include $(CLEAR_VARS)
+#
+#SOURCES := \
+#        nfct-event.c
+#
+#LOCAL_MODULE    := netfilter
+#LOCAL_C_INCLUDES += frameworks/base/include system/core/include 
+#LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog
+#LOCAL_SRC_FILES := $(SOURCES)
+#
+#include $(BUILD_EXECUTABLE)

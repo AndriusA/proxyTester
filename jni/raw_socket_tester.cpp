@@ -88,8 +88,8 @@ int main() {
                 u_int16_t src_port = 0, dst_port = 0;
 
                 for (int b = 0; b < 4; b++) {
-                    source |= ( (buffer[2 + b]) & (char)0xFF ) << (8 * b);
-                    destination |= ( (buffer[2 + 4 + 2 + b]) & (char)0xFF ) << (8 * b);
+                    source |= ( (buffer[2 + b]) & (char)0xFF ) << (8 * (3-b));
+                    destination |= ( (buffer[2 + 4 + 2 + b]) & (char)0xFF ) << (8 * (3-b));
                 }
                 for (int b = 0; b < 2; b++) {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));

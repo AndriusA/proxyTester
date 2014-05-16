@@ -59,3 +59,7 @@ void printPacketInfo(struct iphdr *ip, struct tcphdr *tcp);
 test_error runTest(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
 
 #endif
+
+
+// ISNs new linux kernel: https://lkml.org/lkml/2013/10/5/143
+// 		http://lxr.free-electrons.com/source/net/core/secure_seq.c

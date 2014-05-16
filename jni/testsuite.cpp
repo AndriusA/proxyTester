@@ -1,130 +1,59 @@
 #include <android/log.h>
 #include "testsuite.hpp"
+#include "util.hpp"
 
 #ifndef BUFLEN
 #define BUFLEN 4096
 #endif
 
-uint32_t SEQ_LOCAL, SEQ_REMOTE, ACKED_REMOTE;
+int SEQ_LOCAL, SEQ_REMOTE, ACKED_REMOTE;
 
-void printPacketInfo(struct iphdr *ip, struct tcphdr *tcp) {
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "TCP Checksum: %04X", ntohs(tcp->check));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "%s:%i --> ", inet_ntoa(*(struct in_addr*) &ip->saddr), ntohs(tcp->source));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "\t\t %s:%i", inet_ntoa(*(struct in_addr*) &ip->daddr), ntohs(tcp->dest));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "\tSeq: %zu \tAck: %zu", ntohl(tcp->seq), ntohl(tcp->ack_seq));
-}
-
-void printBufferHex(char *buffer, int length) {
-    int i;
-    char *buf_str = (char*) malloc(2 * length + 1);
-    char *buf_ptr = buf_str;
-    for (i = 0; i < length; i++) {
-        buf_ptr += sprintf(buf_ptr, "%02X ", buffer[i]);
-    }
-    *(buf_ptr+1) = '\0';
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "%s", buf_str);
-}
-
-uint16_t comp_chksum(uint16_t *addr, int len) {
-    unsigned long sum = 0;
-    while (len > 1) {
-        sum += *(addr);
-        addr = addr + 1;
-        len -= 2;
-    }
-    if (len > 0) {
-        sum += *addr;
-    }
-    while (sum >> 16) {
-        sum = ((sum & 0xffff) + (sum >> 16));
-    }
-    sum = ~sum;
-    return ((uint16_t) sum);
-}
-
-uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
-    uint32_t checksum = ntohs(tcp->check);
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Recalculating packet checksum %d", checksum);
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "... Recalcualting, src ip: %04X%04X, %s", ntohs(ip->saddr & 0xFFFF), ntohs((ip->saddr >> 16) & 0xFFFF), inet_ntoa(*(struct in_addr*) &ip->saddr));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "... Recalcualting, dst ip: %04X%04X, %s", ntohs(ip->daddr & 0xFFFF), ntohs((ip->daddr >> 16) & 0xFFFF), inet_ntoa(*(struct in_addr*) &ip->daddr));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "... Recalcualting, src port: %04X, %d", ntohs(tcp->source), ntohs(tcp->source));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "... Recalcualting, dst port: %04X, %d", ntohs(tcp->dest), ntohs(tcp->dest));
-    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
-    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
-    checksum = csum_add(checksum, ntohs(tcp->dest));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Recalculated: %d, %04X", checksum, checksum);
-    return (uint16_t) checksum;
-}
-
-int tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
-    struct pseudohdr * pseudoheader;
-    int padding = datalen % 2 ? 1 : 0;
-    pseudoheader = (struct pseudohdr *) ( (u_int8_t *) tcp + TCPHDRLEN + datalen + padding );
-    
-    pseudoheader->src_addr = ip->saddr;
-    pseudoheader->dst_addr = ip->daddr;
-    pseudoheader->padding = 0;
-    pseudoheader->proto = ip->protocol;
-    pseudoheader->length = htons(TCPHDRLEN + datalen);
-
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "data: \t\t");
-    printBufferHex((char*) tcp, TCPHDRLEN + datalen + padding + PHDRLEN);
-
-    int checksum = comp_chksum((uint16_t*) tcp,
-            TCPHDRLEN + datalen + padding + PHDRLEN);
-}
-
-test_error tcpSyn(unsigned long source, unsigned int src_port,
-            unsigned long destination, unsigned int dst_port, 
-            int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) 
+void buildIPHeader(struct iphdr *ip, 
+            uint32_t source, uint32_t destination,
+            uint32_t data_length)
 {
-    int datalen  = 0;
-
     ip->frag_off    = 0;
     ip->version     = 4;
     ip->ihl         = 5;
-    ip->tot_len     = htons(IPHDRLEN + TCPHDRLEN + datalen);
+    ip->tot_len     = htons(IPHDRLEN + TCPHDRLEN + data_length);
     ip->id          = 0;
     ip->ttl         = 40;
     ip->protocol    = IPPROTO_TCP;
     ip->saddr       = source;
     ip->daddr       = destination;
     ip->check       = 0;
-
-    tcp->source     = htons(src_port);
-    tcp->dest       = htons(dst_port);
-    tcp->seq        = htonl(random() % 65535);
-    tcp->ack_seq    = htonl(0xdeadbeef);
-    tcp->doff       = 5;    // Data offset 5 octets (no options)
-    tcp->ack        = 0;
-    tcp->psh        = 0;
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 1;
-    tcp->fin        = 0;
-    tcp->window     = htons(65535);
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
-
-    SEQ_LOCAL = tcp->seq + 1;
-
-    printPacketInfo(ip, tcp);
-
-    struct sockaddr_in to;
-    to.sin_addr.s_addr = ip->daddr;
-    to.sin_family = AF_INET;
-    to.sin_port = tcp->dest;
-
-    int bytes = sendto(sock, buffer, ntohs(ip->tot_len), 0, 
-                    (struct sockaddr*) &to, sizeof(to));
-
-    if (bytes == -1) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "sendto() failed: %s", strerror(errno));
-        return syn_error;
-    }
-    return success;
 }
 
-test_error tcpReceive(int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) {
+int tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
+    // Add pseudoheader at the end of the packet for simplicity,
+    struct pseudohdr * pseudoheader;
+    // Need to add padding between data and pseudoheader
+    // if data payload length is not a multiple of 2,
+    // checksum is a 2 byte value.
+    int padding = datalen % 2 ? 1 : 0;
+    pseudoheader = (struct pseudohdr *) ( (u_int8_t *) tcp + TCPHDRLEN + datalen + padding );
+    pseudoheader->src_addr = ip->saddr;
+    pseudoheader->dst_addr = ip->daddr;
+    pseudoheader->padding = 0;
+    pseudoheader->proto = ip->protocol;
+    pseudoheader->length = htons(TCPHDRLEN + datalen);
+    // compute chekcsum from the bound of the tcp header to the appended pseudoheader
+    int checksum = comp_chksum((uint16_t*) tcp,
+            TCPHDRLEN + datalen + padding + PHDRLEN);
+    return checksum;
+}
+
+uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
+    uint32_t checksum = ntohs(tcp->check);
+    // Add back destination (own!) IP address and port number to undo what NAT modifies
+    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
+    checksum = csum_add(checksum, ntohs(tcp->dest));
+    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Checksum NATing recalculated: %d, %04X", checksum, checksum);
+    return (uint16_t) checksum;
+}
+
+test_error receivePacket(int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) {
     int length = recv(sock, buffer, BUFLEN, 0);
     // Set SEQ_REMOTE if receiving a SYNACK packet
     if (tcp->syn) {
@@ -145,41 +74,57 @@ test_error tcpReceive(int sock, char buffer[], struct iphdr *ip, struct tcphdr *
     return success;
 }
 
-test_error tcpSynAck(int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) {
-    test_error ret = tcpReceive(sock, buffer, ip, tcp);
+test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) {
+    int bytes = sendto(sock, buffer, len, 0, (struct sockaddr*) dst, sizeof(*dst));
+    if (bytes == -1) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "sendto() failed for data packet: %s", strerror(errno));
+        return send_error;
+    }
+    return success;
+}
+
+test_error receiveTcpSynAck(int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) {
+    test_error ret = receivePacket(sock, buffer, ip, tcp);
     if (ret == success)
         undo_natting(ip, tcp);
     return ret;
 }
 
-test_error tcpHandshakeAck(unsigned long source, unsigned int src_port,
-            unsigned long destination, unsigned int dst_port, 
-            int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp) 
+test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp) 
+{
+    // IP packet with TCP and no payload
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+
+    tcp->source     = src->sin_port;
+    tcp->dest       = dst->sin_port;
+    tcp->seq        = htonl(random() % 65535);
+    // tcp->ack_seq    = htonl(0xdeadbeef);
+    tcp->doff       = 5;    // Data offset 5 octets (no options)
+    tcp->ack        = 0;
+    tcp->psh        = 0;
+    tcp->rst        = 0;
+    tcp->urg        = 0;
+    tcp->syn        = 1;
+    tcp->fin        = 0;
+    tcp->window     = htons(65535);
+    tcp->check      = 0;
+    tcp->check      = tcpChecksum(ip, tcp, datalen);
+    printPacketInfo(ip, tcp);
+}
+
+test_error buildTcpHandshakeAck(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq_local, uint32_t seq_remote) 
 {
     int datalen = 0;
-    ip->frag_off = 0;
-    ip->version = 4;
-    ip->ihl = 5;
-    ip->tot_len = htons(IPHDRLEN + TCPHDRLEN + datalen);
-    ip->id = 0;
-    ip->ttl = 40;
-    ip->protocol = IPPROTO_TCP;
-    ip->saddr = source;
-    ip->daddr = destination;
-    ip->check = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
 
-    u_int32_t client_seq = ntohl(tcp->ack_seq);
-    SEQ_LOCAL = client_seq;
-    SEQ_REMOTE = ntohl(tcp->seq)+1;
-    // if (client_seq != SEQ_LOCAL) {
-    //     __android_log_print(ANDROID_LOG_WARN, TAG, "Remote returned sequence number does not match our generated! Expected %d, Got %d", SEQ_LOCAL, client_seq);
-    //     return 2;
-    // }
-
-    tcp->source     = htons(src_port);
-    tcp->dest       = htons(dst_port);
-    tcp->seq        = htonl(SEQ_LOCAL);
-    tcp->ack_seq    = htonl(SEQ_REMOTE);
+    tcp->source     = src->sin_port;
+    tcp->dest       = dst->sin_port;
+    tcp->seq        = htonl(seq_local);
+    tcp->ack_seq    = htonl(seq_remote);
     tcp->doff       = 5;
     tcp->ack        = 1;
     tcp->psh        = 0;
@@ -190,47 +135,24 @@ test_error tcpHandshakeAck(unsigned long source, unsigned int src_port,
     tcp->window     = htons(65535);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
-    ACKED_REMOTE = tcp->ack_seq;
     printPacketInfo(ip, tcp);
-
-    struct sockaddr_in to;
-    to.sin_addr.s_addr = ip->daddr;
-    to.sin_family = AF_INET;
-    to.sin_port = tcp->dest;
-
-    int bytes = sendto(sock, buffer, ntohs(ip->tot_len), 0, (struct sockaddr*) &to, sizeof(to));
-    if (bytes == -1) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "sendto() failed for ACK: %s", strerror(errno));
-        return ack_error;
-    }
-    return success;
 }
 
-test_error tcpSendData(unsigned long source, unsigned int src_port,
-            unsigned long destination, unsigned int dst_port, 
-            int sock, char buffer[], struct iphdr *ip, struct tcphdr *tcp,
+test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq_local, uint32_t seq_remote,
             char data[], int datalen)
 {
-    u_int32_t client_seq = ntohl(tcp->seq);
-    u_int32_t remote_seq = ntohl(tcp->ack_seq);
-    memset(buffer, 0, BUFLEN);
-    memcpy(buffer + IPHDRLEN + TCPHDRLEN, data, datalen);
+    memset(ip, 9, BUFLEN);
+    // (u_int8_t *) tcp + TCPHDRLEN + datalen + padding
+    char *dataStart = (char*)ip + IPHDRLEN + TCPHDRLEN;
+    memcpy(dataStart, data, datalen);
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
 
-    ip->frag_off = 0;
-    ip->version = 4;
-    ip->ihl = 5;
-    ip->tot_len = htons(IPHDRLEN + TCPHDRLEN + datalen);
-    ip->id = 0;
-    ip->ttl = 40;
-    ip->protocol = IPPROTO_TCP;
-    ip->saddr = source;
-    ip->daddr = destination;
-    ip->check = 0;  
-
-    tcp->source     = htons(src_port);
-    tcp->dest       = htons(dst_port);
-    tcp->seq        = htonl(client_seq);
-    tcp->ack_seq    = htonl(remote_seq);
+    tcp->source     = src->sin_port;
+    tcp->dest       = dst->sin_port;
+    tcp->seq        = htonl(seq_local);
+    tcp->ack_seq    = htonl(seq_remote);
     tcp->doff       = 5;
     tcp->ack        = 1;
     tcp->psh        = 1;
@@ -243,43 +165,39 @@ test_error tcpSendData(unsigned long source, unsigned int src_port,
     tcp->check      = tcpChecksum(ip, tcp, datalen);
 
     printPacketInfo(ip, tcp);
-    printBufferHex(data, datalen);
-
-    struct sockaddr_in to;
-    to.sin_addr.s_addr = ip->daddr;
-    to.sin_family = AF_INET;
-    to.sin_port = tcp->dest;
-
-    int bytes = sendto(sock, buffer, ntohs(ip->tot_len), 0, (struct sockaddr*) &to, sizeof(to));
-    if (bytes == -1) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "sendto() failed for data packet: %s", strerror(errno));
-        return send_error;
-    }
-    return success;
+    printBufferHex((char*)ip, IPHDRLEN + TCPHDRLEN + datalen);   
 }
 
-test_error handshake(unsigned long source, unsigned int src_port,
-                unsigned long destination, unsigned int dst_port,
-                int socket, char buffer[], struct iphdr *ip, struct tcphdr *tcp)
+test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote)
 {
     test_error ret;
-    ret = tcpSyn(source, src_port, destination, dst_port, socket, buffer, ip, tcp);
+    seq_local = 0;
+    seq_remote = 0;
+    buildTcpSyn(src, dst, ip, tcp);
+    seq_local = ntohl(tcp->seq) + 1;
+    ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYN packet failure: %s", strerror(errno));
         return ret;
     }
 
-    ret = tcpSynAck(socket, buffer, ip, tcp);
+    ret = receiveTcpSynAck(socket, buffer, ip, tcp);
+    seq_local = ntohl(tcp->ack);
+    seq_remote = ntohl(tcp->seq) + 1;
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYNACK packet failure: %s", strerror(errno));
         return ret;
-    } else if (ip->saddr != destination || ip->daddr != source || ntohs(tcp->source) != dst_port || ntohs(tcp->dest) != src_port) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYNACK packet failure: wrong packet received");
-        return invalid_packet;
     }
+    // else if (ip->saddr != destination || ip->daddr != source || ntohs(tcp->source) != dst_port || ntohs(tcp->dest) != src_port) {
+    //     __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYNACK packet failure: wrong packet received");
+    //     return invalid_packet;
+    // }
     __android_log_print(ANDROID_LOG_DEBUG, TAG, "SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
-    ret = tcpHandshakeAck(source, src_port, destination, dst_port, socket, buffer, ip, tcp);
+    buildTcpHandshakeAck(src, dst, ip, tcp, seq_local, seq_remote);
+    ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP handshake ACK failure: %s", strerror(errno));
         return ret;
@@ -287,46 +205,67 @@ test_error handshake(unsigned long source, unsigned int src_port,
     return success;
 }
 
-test_error runTest(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port) {
-    int sock, bytes, on = 1;
-    char buffer[BUFLEN] = {0};
-    memset(buffer, 0, BUFLEN);
-    struct iphdr *ip;
-    struct tcphdr *tcp;
-    char *data;
-
+test_error setupSocket(int &sock) {
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock == -1) {
         __android_log_print(ANDROID_LOG_DEBUG, TAG, "socket() failed");
         return test_failed;
-    }else{
+    } else {
         __android_log_print(ANDROID_LOG_DEBUG, TAG, "socket() ok");
     }
 
+    int on = 1;
     if (setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) == -1) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "setsockopt() failed: %s", strerror(errno));
         return test_failed;
-    }else{
+    } else {
         __android_log_print(ANDROID_LOG_DEBUG, TAG, "setsockopt() ok");
+    }
+    return success;
+}
+
+test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
+    int sock;
+    char buffer[BUFLEN] = {0};
+    struct iphdr *ip;
+    struct tcphdr *tcp;
+
+    if (setupSocket(sock) != success) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "Socket setup failed: %s", strerror(errno));
+        return test_failed;
     }
 
     ip = (struct iphdr*) buffer;
     tcp = (struct tcphdr*) (buffer + IPHDRLEN);
-    data = buffer + IPHDRLEN + TCPHDRLEN;
     __android_log_print(ANDROID_LOG_DEBUG, TAG, "Typecasting ok");
 
-    if (handshake(source, src_port, destination, dst_port, sock, buffer, ip, tcp) != success) {
+    struct sockaddr_in src, dst;
+    src.sin_family = AF_INET;
+    src.sin_port = htons(src_port);
+    src.sin_addr.s_addr = htonl(source);
+    dst.sin_family = AF_INET;
+    dst.sin_port = htons(dst_port);
+    dst.sin_addr.s_addr = htonl(destination);
+    uint32_t seq_local, seq_remote;
+
+    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote) != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP handshake failed: %s", strerror(errno));
         return test_failed;
     }
 
     char sendString[] = "HELLO";
     __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending String \"%s\", of length %d\n", sendString, strlen(sendString));
-    tcpSendData(source, src_port, destination, dst_port, sock, buffer, ip, tcp, sendString, strlen(sendString));
-    int ret = tcpSynAck(sock, buffer, ip, tcp);
+    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, sendString, strlen(sendString));
+    test_error ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
+    if (ret == success) {
+        ret = receivePacket(sock, buffer, ip, tcp);
+        // TODO: handle the new sequence numbers
+        seq_local = ntohl(tcp->ack);
+    }
 
     if (ret != success)
         return test_failed;
     else
         return test_complete;
 }
+
