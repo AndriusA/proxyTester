@@ -1,0 +1,9 @@
+bin/
+libs/
+gen/
+obj/
+res/raw/
+jni/temp/
+build.xml
+*.properties
+proguard-project.txt
