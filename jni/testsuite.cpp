@@ -57,10 +57,10 @@ test_error validPacket(struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
     if ( ip->saddr != exp_src->sin_addr.s_addr || ip->daddr != exp_dst->sin_addr.s_addr ) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected IP address");
+        // __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected IP address");
         return invalid_packet;
     } else if ( tcp->source != exp_src->sin_port || tcp->dest != exp_dst->sin_port ) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected port number");
+        // __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected port number");
         return invalid_packet;
     } else {
         return success;
@@ -85,8 +85,9 @@ test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
             printBufferHex((char*)ip, length);
             break;
         }
-        else
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Packet does not match connection, continue waiting");
+        else {
+            // __android_log_print(ANDROID_LOG_DEBUG, TAG, "Packet does not match connection, continue waiting");
+        }
     }
     return success;
 }
@@ -124,7 +125,7 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->source     = src->sin_port;
     tcp->dest       = dst->sin_port;
     tcp->seq        = htonl(random() % 65535);
-    // tcp->ack_seq    = htonl(0xdeadbeef);
+    tcp->ack_seq    = htonl(0xbeef0001);
     tcp->doff       = 5;    // Data offset 5 octets (no options)
     tcp->ack        = 0;
     tcp->psh        = 0;
@@ -192,9 +193,7 @@ test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
             uint32_t seq_local, uint32_t seq_remote,
             char data[], int datalen)
 {
-    memset(ip, 9, BUFLEN);
-    // (u_int8_t *) tcp + TCPHDRLEN + datalen + padding
-    char *dataStart = (char*)ip + IPHDRLEN + TCPHDRLEN;
+    char *dataStart = (char*) ip + IPHDRLEN + TCPHDRLEN;
     memcpy(dataStart, data, datalen);
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
 
@@ -350,6 +349,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
 
     char sendString[] = "HELLO";
     __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending String \"%s\", of length %d\n", sendString, strlen(sendString));
+    memset(buffer, 0, BUFLEN);
     buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, sendString, strlen(sendString));
     test_error ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
     if (ret == success) {
