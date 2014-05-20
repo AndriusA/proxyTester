@@ -2,29 +2,10 @@ package org.smarte.tcptester;
 
 import android.app.Activity;
 import android.widget.TextView;
-import android.widget.Button;
-import android.view.View;
 import android.os.Bundle;
-import android.content.Intent;
-import android.content.Context;
-import android.net.VpnService;
-import android.net.NetworkInfo;
-import android.net.ConnectivityManager;
-import android.util.Log;
-import android.os.Build;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
+import android.view.View;
 
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.ArrayList;
-
-import com.stericson.RootTools.RootTools;
+import edu.berkeley.icsi.netalyzr.tests.Test;
 
 public class TcpTester extends Activity implements View.OnClickListener 
 {
@@ -52,6 +33,8 @@ public class TcpTester extends Activity implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        new RawSocketTester(TcpTester.this).execute(mServerAddress.getText().toString(), mServerPort.getText().toString());
+        Test tcpTester = new RawSocketTester("TCPTester", getApplicationContext());
+        tcpTester.init();
+        new Thread(tcpTester).start();
     }
 }

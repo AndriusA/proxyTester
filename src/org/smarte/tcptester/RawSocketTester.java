@@ -50,7 +50,9 @@ import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
 
-public class RawSocketTester extends AsyncTask<String, Integer, String>
+import edu.berkeley.icsi.netalyzr.tests.Test;
+
+public class RawSocketTester extends Test
 {
     public static final String TAG = "TCPTester";
     private static final String PREFS_NAME = TAG;
@@ -59,13 +61,21 @@ public class RawSocketTester extends AsyncTask<String, Integer, String>
 
     private SocketTesterServer mTesterServer;
     private Context mContext;
+    private ArrayList<String> mServerAddresses;
 
-    public RawSocketTester(Context context) {
-        mContext = context;
+    public void init(Context context) {
+        mServerAddresses = new ArrayList<String>();
+        mServerAddresses.add("192.95.61.160");
+        mServerAddresses.add("6969");
     }
 
-    @Override
-    public String doInBackground(String... serverAddresses) {
+    public RawSocketTester(String name, Context context) {
+        super(name);
+        mContext = context;
+    }
+    
+
+    public int runImpl() throws IOException {
         // Install the binary on first launch, if rooted
         if (isFirstLaunch()) {
             setLaunched();
@@ -74,15 +84,15 @@ public class RawSocketTester extends AsyncTask<String, Integer, String>
                 Log.d(TAG, "Native binary installation - " + ret);
             } else {
                 Log.e(TAG, "Fatal: Device not rooted.");
-                return "ERROR";
+                return Test.TEST_PROHIBITED;
             }
         }
 
         // server address and port number are passed as separate String parameters
         // could use any number of endpoints, as long as there is both an address and a port number
-        if (serverAddresses.length % 2 != 0) {
+        if (mServerAddresses.size() % 2 != 0) {
             Log.e(TAG, "Incorrect number of parameters to RawSocketTester.doInBackground");
-            return "ERRROR";
+            return Test.TEST_ERROR | Test.TEST_ERROR_MALFORMED_URL;
         }
 
         
@@ -90,7 +100,7 @@ public class RawSocketTester extends AsyncTask<String, Integer, String>
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if ( !networkInfo.isConnected() ) {
             Log.d(TAG, "Fatal: Device is currently offline");
-            return "Offline";
+            return Test.TEST_ERROR | Test.TEST_ERROR_UNAVAIL;
         }
             
         mTesterServer = new SocketTesterServer();
@@ -104,16 +114,16 @@ public class RawSocketTester extends AsyncTask<String, Integer, String>
         List<InetAddress> localAddresses = getOwnInetAddresses();
         for (int i = 0; i < localAddresses.size(); i++) {
             byte[] s_addr = localAddresses.get(i).getAddress();
-            for (int j = 0; j < serverAddresses.length; j = j + 2) {
+            for (int j = 0; j < mServerAddresses.size(); j = j + 2) {
                 InetAddress[] d_addr_l;
                 try {
-                    d_addr_l = InetAddress.getAllByName(serverAddresses[j]);
+                    d_addr_l = InetAddress.getAllByName(mServerAddresses.get(j));
                 } catch (UnknownHostException e) {
-                    Log.w(TAG, "Unkown host " + serverAddresses[j]);
+                    Log.w(TAG, "Unkown host " + mServerAddresses.get(j));
                     continue;
                 }
 
-                Short t = Short.parseShort(serverAddresses[j+1]);
+                Short t = Short.parseShort(mServerAddresses.get(j+1));
                 byte[] d_port = new byte[2];
                 d_port[1] = (byte)(t & 0xFF);
                 d_port[0] = (byte)((t >> 8) & 0xFF);
@@ -140,21 +150,15 @@ public class RawSocketTester extends AsyncTask<String, Integer, String>
             Shell.closeAll();
         } catch (InterruptedException e) {
             Log.e(TAG, "LocalServerSocket thread interrupted", e);
-        } catch (IOException e) {
-            Log.e(TAG, "Error closing root shell", e);
         }
         
-        return "SUCCESS"; 
+        return Test.TEST_COMPLEX; 
     }
 
-    @Override
-    public void onProgressUpdate(Integer... progress) {
-        // setProgressPercent(progress[0]);
-    }
-
-    @Override
-    protected void onPostExecute(String result) {
-        Log.i(TAG, "Finished: " + result);
+    public String getPostResults() {
+        String ret = "";
+        //TODO: Generate the string results
+        return ret;
     }
 
     private List<InetAddress> getOwnInetAddresses() {

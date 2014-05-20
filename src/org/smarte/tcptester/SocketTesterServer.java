@@ -1,47 +1,14 @@
 package org.smarte.tcptester;
 
-import android.app.Activity;
-import android.widget.TextView;
-import android.widget.Button;
-import android.view.View;
-import android.os.Bundle;
-import android.content.Intent;
-import android.content.Context;
-import android.net.VpnService;
-import android.net.NetworkInfo;
-import android.net.ConnectivityManager;
-import android.net.LocalSocket;
-import android.net.LocalSocketAddress;
 import android.net.LocalServerSocket;
-import android.util.Log;
-import android.os.Build;
-import android.os.AsyncTask;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.ArrayList;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.IOException;
-import java.io.DataOutputStream;
 import java.io.DataInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
+import android.net.LocalSocket;
+import java.util.concurrent.locks.ReentrantLock;
+import java.io.DataOutputStream;
+import android.util.Log;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
+import java.io.IOException;
 
 public class SocketTesterServer extends Thread {
     public static final String TAG = "TCPTester";
