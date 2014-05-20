@@ -37,6 +37,8 @@ enum test_error {
     ack_error,
     send_error,
     invalid_packet,
+    receive_error,
+    receive_timeout,
     sequence_error,
     test_failed,
     test_complete

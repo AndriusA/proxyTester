@@ -68,11 +68,25 @@ test_error validPacket(struct iphdr *ip, struct tcphdr *tcp,
 test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
-    int length = recv(sock, (char*)ip, BUFLEN, 0);
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Received %d bytes \n", length);
-    printPacketInfo(ip, tcp);
-    printBufferHex((char*)ip, length);
-    return validPacket(ip, tcp, exp_src, exp_dst);
+    while (true) {
+        int length = recv(sock, (char*)ip, BUFLEN, 0);
+        // __android_log_print(ANDROID_LOG_DEBUG, TAG, "Received %d bytes \n", length);
+        if (length == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return receive_timeout;
+            else
+                return receive_error;
+        }
+
+        if (validPacket(ip, tcp, exp_src, exp_dst) == success) {
+            printPacketInfo(ip, tcp);
+            printBufferHex((char*)ip, length);
+            break;
+        }
+        else
+            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Packet does not match connection, continue waiting");
+    }
+    return success;
 }
 
 test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) {
@@ -159,7 +173,7 @@ test_error buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->seq        = htonl(seq_local);
     tcp->ack_seq    = htonl(seq_remote);
     tcp->doff       = 5;    // Data offset 5 octets (no options)
-    tcp->ack        = 0;
+    tcp->ack        = 1;
     tcp->psh        = 0;
     tcp->rst        = 0;
     tcp->urg        = 0;
