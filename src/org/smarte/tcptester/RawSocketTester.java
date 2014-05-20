@@ -1,55 +1,30 @@
 package org.smarte.tcptester;
 
-import android.app.Activity;
-import android.widget.TextView;
-import android.widget.Button;
-import android.view.View;
-import android.os.Bundle;
-import android.content.Intent;
-import android.content.Context;
-import android.net.VpnService;
-import android.net.NetworkInfo;
-import android.net.ConnectivityManager;
-import android.net.LocalSocket;
-import android.net.LocalSocketAddress;
-import android.net.LocalServerSocket;
-import android.util.Log;
-import android.os.Build;
-import android.os.AsyncTask;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.ArrayList;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.IOException;
-import java.io.DataOutputStream;
-import java.io.DataInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import android.content.pm.PackageManager;
+import java.util.Enumeration;
+import android.net.ConnectivityManager;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.Random;
+import java.net.SocketException;
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import java.util.List;
+import android.net.NetworkInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.util.Log;
 import java.util.concurrent.TimeoutException;
-
+import java.net.UnknownHostException;
+import android.os.Build;
+import java.io.IOException;
 import com.stericson.RootTools.RootTools;
 import com.stericson.RootTools.execution.Shell;
 import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
-
 import edu.berkeley.icsi.netalyzr.tests.Test;
 
 public class RawSocketTester extends Test
@@ -76,14 +51,10 @@ public class RawSocketTester extends Test
     
 
     public int runImpl() throws IOException {
-        // Install the binary on first launch, if rooted
-        if (isFirstLaunch()) {
-            setLaunched();
-            if (RootTools.isRootAvailable()) {
-                boolean ret = installNativeBinary(mContext);
-                Log.d(TAG, "Native binary installation - " + ret);
+        if (!RootTools.hasBinary(mContext, TESTER_BINARY)) {
+            if (RootTools.isRootAvailable() && installNativeBinary(mContext)) {
+                Log.d(TAG, "Native binary installed");
             } else {
-                Log.e(TAG, "Fatal: Device not rooted.");
                 return Test.TEST_PROHIBITED;
             }
         }
@@ -136,9 +107,14 @@ public class RawSocketTester extends Test
                     s_port[1] = (byte)(r_port & 0xFF);
                     s_port[0] = (byte)((r_port >> 8) & 0xFF);
 
-                    preventRstPort(d_port);
+                    boolean iptablesAdded = preventRstPort(d_port);
+                    // Try runnig the test regardless
                     runTest(s_addr, s_port, d_addr, d_port);
-                    allowRstPort(d_port);
+                    if (iptablesAdded) {
+                        if (!allowRstPort(d_port)) {
+                            Log.e(TAG, "IPTables rule added but not removed!");
+                        }
+                    }
                 }
             }
         }
@@ -223,22 +199,8 @@ public class RawSocketTester extends Test
             return false;
         }
     }
-
-    private boolean isFirstLaunch() {
-        // Restore preferences
-        SharedPreferences settings = mContext.getSharedPreferences(PREFS_NAME, mContext.MODE_PRIVATE);
-        boolean isFirstLaunch = settings.getBoolean("isFirstLaunch", true);
-        Log.i(TAG, "isFirstLaunch sharedPreferences " + isFirstLaunch);
-        return isFirstLaunch;
-    }
-
-    private void setLaunched() {
-        SharedPreferences settings = mContext.getSharedPreferences(PREFS_NAME, mContext.MODE_PRIVATE);
-        settings.edit().putBoolean("isFirstLaunch", true).commit();
-        Log.i(TAG, "isFirstLaunch sharedPreferences set true");
-    }
     
-    private void preventRstPort(byte[] port) {
+    private boolean preventRstPort(byte[] port) {
         ByteBuffer b_port = ByteBuffer.wrap(port);
         short port_num = b_port.getShort();
         String cmd = String.format(IPTABLES_CMD, 'A', port_num);
@@ -250,27 +212,28 @@ public class RawSocketTester extends Test
                 if (shellCmd.isFinished())
                     break;
                 else {
-                    // Log.d(TAG, shellCmd.getCommand() + " running? " + shellCmd.isExecuting());
+                    // Busy wait for command to finish
                     Thread.sleep(100);
                 }
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to enable iptables rule " + cmd, e);
-            return;
+            return false;
         } catch (InterruptedException e) {
             Log.e(TAG, "Failed to enable iptables rule - interrupted while waiting to finish ", e);
-            return;
+            return false;
         } catch (TimeoutException e) {
             Log.e(TAG, "Timed out getting root shell", e);
-            return;
+            return false;
         } catch (RootDeniedException e) {
             Log.e(TAG, "Root denied for shell, quitting", e);
-            return;
+            return false;
         }
         Log.d(TAG, "iptables rule enabled");
+        return true;
     }
 
-    private void allowRstPort(byte[] port) {
+    private boolean allowRstPort(byte[] port) {
         ByteBuffer b_port = ByteBuffer.wrap(port);
         short port_num = b_port.getShort();
         String cmd = String.format(IPTABLES_CMD, 'D', port_num);
@@ -288,18 +251,19 @@ public class RawSocketTester extends Test
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to disable iptables rule " + cmd, e);
-            return;
+            return false;
         } catch (InterruptedException e) {
             Log.e(TAG, "Failed to disable iptables rule - interrupted while waiting to finish ", e);
-            return;
+            return false;
         } catch (TimeoutException e) {
             Log.e(TAG, "Timed out getting root shell", e);
-            return;
+            return false;
         } catch (RootDeniedException e) {
             Log.e(TAG, "Root denied for shell, quitting", e);
-            return;
+            return false;
         }
         Log.d(TAG, "iptables rule disabled");
+        return true;
     }
 
     final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();

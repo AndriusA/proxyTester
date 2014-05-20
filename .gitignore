@@ -7,3 +7,4 @@ jni/temp/
 build.xml
 *.properties
 proguard-project.txt
+src/edu/
