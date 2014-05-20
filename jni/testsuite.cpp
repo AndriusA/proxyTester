@@ -3,8 +3,10 @@
 #include "util.hpp"
 
 #ifndef BUFLEN
-#define BUFLEN 4096
+#define BUFLEN 65535
 #endif
+
+#define TCPWINDOW (BUFLEN - IPHDRLEN - TCPHDRLEN)
 
 void buildIPHeader(struct iphdr *ip, 
             uint32_t source, uint32_t destination,
@@ -130,7 +132,7 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->urg        = 0;
     tcp->syn        = 1;
     tcp->fin        = 0;
-    tcp->window     = htons(65535);
+    tcp->window     = htons(TCPWINDOW);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     printPacketInfo(ip, tcp);
@@ -154,7 +156,7 @@ test_error buildTcpHandshakeAck(struct sockaddr_in *src, struct sockaddr_in *dst
     tcp->urg        = 0;
     tcp->syn        = 0;
     tcp->fin        = 0;
-    tcp->window     = htons(65535);
+    tcp->window     = htons(TCPWINDOW);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     printPacketInfo(ip, tcp);
@@ -179,7 +181,7 @@ test_error buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->urg        = 0;
     tcp->syn        = 0;
     tcp->fin        = 1;
-    tcp->window     = htons(65535);
+    tcp->window     = htons(TCPWINDOW);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     printPacketInfo(ip, tcp);
@@ -207,7 +209,7 @@ test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->urg        = 0;
     tcp->syn        = 0;
     tcp->fin        = 0;
-    tcp->window     = htons(65535);
+    tcp->window     = htons(TCPWINDOW);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
 
