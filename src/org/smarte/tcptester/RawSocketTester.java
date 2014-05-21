@@ -30,25 +30,32 @@ import edu.berkeley.icsi.netalyzr.tests.Test;
 public class RawSocketTester extends Test
 {
     public static final String TAG = "TCPTester";
-    private static final String PREFS_NAME = TAG;
     private static final String TESTER_BINARY = "tcptester";
     private static final String IPTABLES_CMD = "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --dport %d -j DROP && iptables --list";
 
     private SocketTesterServer mTesterServer;
     private Context mContext;
-    private ArrayList<String> mServerAddresses;
-
-    public void init(Context context) {
-        mServerAddresses = new ArrayList<String>();
-        mServerAddresses.add("192.95.61.160");
-        mServerAddresses.add("6969");
-    }
+    
+    private InetAddress mServerAddress;
+    private Short[] mServerPorts; 
+    private ArrayList<TCPTest> mResults;
 
     public RawSocketTester(String name, Context context) {
         super(name);
         mContext = context;
+        mResults = new ArrayList<TCPTest>();
     }
-    
+
+    public void init() {
+        // Only take the first one
+        try {
+            mServerAddress = InetAddress.getAllByName("192.95.61.160")[0];
+        } catch (UnknownHostException e) {
+            mServerAddress = null;
+        }
+        // TODO: also add other common ones: 80 8000 8080
+        mServerPorts = new Short[]{6969};
+    }    
 
     public int runImpl() throws IOException {
         if (!RootTools.hasBinary(mContext, TESTER_BINARY)) {
@@ -58,15 +65,10 @@ public class RawSocketTester extends Test
                 return Test.TEST_PROHIBITED;
             }
         }
-
-        // server address and port number are passed as separate String parameters
-        // could use any number of endpoints, as long as there is both an address and a port number
-        if (mServerAddresses.size() % 2 != 0) {
-            Log.e(TAG, "Incorrect number of parameters to RawSocketTester.doInBackground");
-            return Test.TEST_ERROR | Test.TEST_ERROR_MALFORMED_URL;
-        }
-
         
+        if (mServerAddress == null) {
+            return Test.TEST_ERROR | Test.TEST_ERROR_UNKNOWN_HOST;
+        }
         ConnectivityManager connMgr = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if ( !networkInfo.isConnected() ) {
@@ -81,43 +83,18 @@ public class RawSocketTester extends Test
         // Run binary in background to make root shell available for other commands
         RootTools.runBinary(mContext, TESTER_BINARY, address+" &");
         
-        Random rng = new Random();
-        List<InetAddress> localAddresses = getOwnInetAddresses();
-        for (int i = 0; i < localAddresses.size(); i++) {
-            byte[] s_addr = localAddresses.get(i).getAddress();
-            for (int j = 0; j < mServerAddresses.size(); j = j + 2) {
-                InetAddress[] d_addr_l;
-                try {
-                    d_addr_l = InetAddress.getAllByName(mServerAddresses.get(j));
-                } catch (UnknownHostException e) {
-                    Log.w(TAG, "Unkown host " + mServerAddresses.get(j));
-                    continue;
-                }
-
-                Short t = Short.parseShort(mServerAddresses.get(j+1));
-                byte[] d_port = new byte[2];
-                d_port[1] = (byte)(t & 0xFF);
-                d_port[0] = (byte)((t >> 8) & 0xFF);
-                for (int k = 0; k < d_addr_l.length; k++) {
-                    byte[] d_addr = d_addr_l[k].getAddress();
-
-                    // Random port number in [1025...65536)
-                    int r_port = 1024 + 1 + rng.nextInt(65536-1024-1);
-                    byte[] s_port = new byte[2];
-                    s_port[1] = (byte)(r_port & 0xFF);
-                    s_port[0] = (byte)((r_port >> 8) & 0xFF);
-
-                    boolean iptablesAdded = preventRstPort(d_port);
-                    // Try runnig the test regardless
-                    runTest(s_addr, s_port, d_addr, d_port);
-                    if (iptablesAdded) {
-                        if (!allowRstPort(d_port)) {
-                            Log.e(TAG, "IPTables rule added but not removed!");
-                        }
-                    }
+        ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
+        for (TCPTest test : tests) {
+            boolean iptablesAdded = preventRstPort(test.dstPort);
+            // Try runnig the test regardless
+            boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
+            mResults.add(new TCPTest(test, res));
+            if (iptablesAdded) {
+                if (!allowRstPort(test.dstPort)) {
+                    Log.e(TAG, "IPTables rule added but not removed!");
                 }
             }
-        }
+        } 
        
         try {
             // All tests finished, finish the communication thread
@@ -133,11 +110,43 @@ public class RawSocketTester extends Test
 
     public String getPostResults() {
         String ret = "";
-        //TODO: Generate the string results
+        for (TCPTest result : mResults) {
+            ret += ret.toString();
+        }
         return ret;
     }
 
-    private List<InetAddress> getOwnInetAddresses() {
+    private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Short[] serverPorts) {
+        ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
+        basicTests.add(new TCPTest("ACK-only", 0));
+        // basicTests.add(new TCPTest("URG-only", 1));
+        // basicTests.add(new TCPTest("ACK-URG", 2));
+        // basicTests.add(new TCPTest("plain-URG", 10));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect", 3));
+        // basicTests.add(new TCPTest("ACK-checksum", 4));
+        // basicTests.add(new TCPTest("URG-URG", 5));
+        // basicTests.add(new TCPTest("URG-checksum", 6));
+        // basicTests.add(new TCPTest("URG-checksum-incorrect", 7));
+        // basicTests.add(new TCPTest("Reserved-syn", 8));
+        // basicTests.add(new TCPTest("Reserved-est", 9));
+
+        ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
+        // TODO: add seed in production
+        Random rng = new Random();
+        List<InetAddress> localAddresses = getOwnInetAddresses();
+        for (TCPTest test : basicTests) {
+            for (Short dstPort : serverPorts) {
+                for (InetAddress localAddress : localAddresses) {
+                    // Unprivileged random port number in [1025...65536)
+                    short srcPort = (short) ( 1024 + 1 + rng.nextInt(65536-1024-1) );
+                    completeTests.add(new TCPTest(test, serverAddress, dstPort, localAddress, srcPort));
+                }
+            }
+        }
+        return completeTests;
+    }
+
+    private static List<InetAddress> getOwnInetAddresses() {
         List<InetAddress> ipAddresses = new ArrayList<InetAddress>();
         try {
             Enumeration<NetworkInterface> en;
@@ -158,21 +167,6 @@ public class RawSocketTester extends Test
         } finally {
             return ipAddresses;
         }
-    }
-
-    private void runTest(byte[] s_addr, byte[] s_port, byte[] d_addr, byte[] d_port) {    
-        ByteArrayOutputStream command = new ByteArrayOutputStream();
-        command.write((byte) (1+1+4+2+4+2));
-        command.write((byte) 1); // OPCODE
-        command.write(s_addr, 0, 4);
-        command.write(s_port, 0, 2);
-        command.write(d_addr, 0, 4);
-        command.write(d_port, 0, 2);
-
-        mTesterServer.send(command.toByteArray());    
-        
-        byte[] response = mTesterServer.receiveCommand();
-        Log.d(TAG, "Response received: " + bytesToHex(response, response[0]));
     }
 
     private boolean installNativeBinary(Context context) {
@@ -200,9 +194,7 @@ public class RawSocketTester extends Test
         }
     }
     
-    private boolean preventRstPort(byte[] port) {
-        ByteBuffer b_port = ByteBuffer.wrap(port);
-        short port_num = b_port.getShort();
+    private boolean preventRstPort(Short port_num) {
         String cmd = String.format(IPTABLES_CMD, 'A', port_num);
         Command shellCmd = new CommandCapture(0, cmd);
         Log.d(TAG, "Iptables command to execute: " + cmd);
@@ -233,9 +225,7 @@ public class RawSocketTester extends Test
         return true;
     }
 
-    private boolean allowRstPort(byte[] port) {
-        ByteBuffer b_port = ByteBuffer.wrap(port);
-        short port_num = b_port.getShort();
+    private boolean allowRstPort(Short port_num) {
         String cmd = String.format(IPTABLES_CMD, 'D', port_num);
         Command shellCmd = new CommandCapture(1, cmd);
         Log.d(TAG, "Iptables command to execute: " + cmd);
@@ -275,5 +265,36 @@ public class RawSocketTester extends Test
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    public class TCPTest {
+        public String name;
+        public byte opcode;
+        public boolean result = false;
+        public InetAddress src;
+        public Short srcPort;
+        public InetAddress dst;
+        public Short dstPort;
+        public TCPTest(String name, int opcode) {
+            this.name = name;
+            this.opcode = (byte) opcode;
+        }
+        public TCPTest(TCPTest t, InetAddress dst, Short dstPort, InetAddress src, Short srcPort) {
+            this.name = t.name;
+            this.opcode = t.opcode;
+            this.dst = dst;
+            this.dstPort = dstPort;
+            this.src = src;
+            this.srcPort = srcPort;
+        }
+        public TCPTest(TCPTest t, boolean result) {
+            this.result = result;
+        }
+        public String toString() {
+            return "Test " + name 
+                + " from " + src.getHostAddress() + ":" + Short.toString(srcPort) 
+                + " to " + dst.getHostAddress() + ":" + Short.toString(dstPort) 
+                + (result == true ? " passed" : " failed");
+        }
     }
 }

@@ -9,6 +9,8 @@ import android.util.Log;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
 
 public class SocketTesterServer extends Thread {
     public static final String TAG = "TCPTester";
@@ -104,7 +106,31 @@ public class SocketTesterServer extends Thread {
         Log.d(TAG, "Finished");
     }
 
-    public boolean send(byte[] msg) {
+    public boolean runTest(byte opcode, InetAddress src, Short srcPort, InetAddress dst, Short dstPort) {
+        byte commandLength = 1+1+4+2+4+2;
+        ByteBuffer command = ByteBuffer.allocate(commandLength);
+        // LTV (Length-Type-Value) encoded commands
+        command.put(commandLength);
+        command.put(opcode); // OPCODE
+        command.put(src.getAddress());
+        command.putShort(srcPort);
+        command.put(dst.getAddress());
+        command.putShort(dstPort);
+        command.flip();
+        // Send to the local (unix) socket
+        this.send(command.array());    
+        // Wait for response
+        byte[] response = this.receiveCommand();
+        // Magic opcode from IPC "protocol"
+        if (response[1] == 3) { 
+            Log.d(TAG, "Test successful");    
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean send(byte[] msg) {
         boolean result = false;
         lock.lock();
         try {
@@ -127,7 +153,7 @@ public class SocketTesterServer extends Thread {
         return result;
     }
 
-    public byte[] receiveCommand() {
+    private byte[] receiveCommand() {
         lock.lock();
         bytesRead = 0;
         totalBytesRead = 0;
