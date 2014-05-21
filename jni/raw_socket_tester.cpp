@@ -21,10 +21,10 @@
 #define SOCK_PATH "tcptester_socket"
 
 enum opcode_t : uint8_t {
-    HANDSHAKE_BEEF = 1,
-    HANDSHAKE_CHECKSUM = 2,
-    RESULT_SUCCESS = 3,
-    RESULT_FAIL = 4
+    RESULT_SUCCESS = 0,
+    RESULT_FAIL = 1,
+    HANDSHAKE_BEEF = 2,
+    HANDSHAKE_CHECKSUM = 3
 };
 
 struct ipcmsg {
@@ -33,7 +33,7 @@ struct ipcmsg {
 };
 
 int main() {
-    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting TCPTester service");
+    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting TCPTester service v%d", 2);
     int s, t, len;
     struct sockaddr_un local;
     char buffer[BUFLEN];
@@ -80,8 +80,8 @@ int main() {
         
         // IPC message read completely
         if (n >= ipc->length) {
+            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Payload: ");
             printBufferHex(buffer, ipc->length);
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Payload: %s\n", buffer+2);
             // TODO: parse and process the message
 
             test_error result = test_failed;    // by default
@@ -108,22 +108,8 @@ int main() {
                 ipc->opcode = RESULT_SUCCESS;
             __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending message to the socket, opcode %d", ipc->opcode);
             int ret = write(s, buffer, ipc->length);
-            int written = 0;
-            while (true) {
-                int ret = write(s, buffer+written, ipc->length - written);
-                if (ret < 0) {
-                    __android_log_print(ANDROID_LOG_ERROR, TAG, "Error while sending to local unix socket %s", strerror(errno));
-                    open = false;
-                    break;
-                } else if (ret < ipc->length) {
-                    written += ret;
-                    continue;
-                } else {
-                    break;
-                }
-            }
-            offset = 0;
             memset(buffer, 0, BUFLEN);
+            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Test complete");
         }
         else {
             offset = n;

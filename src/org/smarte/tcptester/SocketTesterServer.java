@@ -106,23 +106,23 @@ public class SocketTesterServer extends Thread {
         Log.d(TAG, "Finished");
     }
 
-    public boolean runTest(byte opcode, InetAddress src, Short srcPort, InetAddress dst, Short dstPort) {
+    public boolean runTest(byte opcode, InetAddress src, int srcPort, InetAddress dst, int dstPort) {
         byte commandLength = 1+1+4+2+4+2;
         ByteBuffer command = ByteBuffer.allocate(commandLength);
         // LTV (Length-Type-Value) encoded commands
         command.put(commandLength);
         command.put(opcode); // OPCODE
         command.put(src.getAddress());
-        command.putShort(srcPort);
+        command.putShort((short) srcPort);
         command.put(dst.getAddress());
-        command.putShort(dstPort);
+        command.putShort((short) dstPort);
         command.flip();
         // Send to the local (unix) socket
         this.send(command.array());    
         // Wait for response
         byte[] response = this.receiveCommand();
         // Magic opcode from IPC "protocol"
-        if (response[1] == 3) { 
+        if (response[1] == 1) { 
             Log.d(TAG, "Test successful");    
             return true;
         } else {
