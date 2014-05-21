@@ -23,7 +23,8 @@
 enum opcode_t : uint8_t {
     HANDSHAKE_BEEF = 1,
     HANDSHAKE_CHECKSUM = 2,
-    RESULT = 3
+    RESULT_SUCCESS = 3,
+    RESULT_FAIL = 4
 };
 
 struct ipcmsg {
@@ -83,6 +84,7 @@ int main() {
             __android_log_print(ANDROID_LOG_DEBUG, TAG, "Payload: %s\n", buffer+2);
             // TODO: parse and process the message
 
+            test_error result = test_failed;    // by default
             if (ipc->opcode == HANDSHAKE_BEEF) {
                 u_int32_t source = 0, destination = 0;
                 u_int16_t src_port = 0, dst_port = 0;
@@ -95,15 +97,17 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
-                runTest(source, src_port, destination, dst_port);
+                result = runTest(source, src_port, destination, dst_port);
             }
             memset(buffer, 0, BUFLEN);
 
-            ipc->length = 1+1+strlen("response");
-            ipc->opcode = RESULT;
-            strcpy(buffer+2, "response");
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending message to the socket, opcode %d", RESULT);
-            printBufferHex(buffer, ipc->length);
+            ipc->length = 1+1;
+            if (result == test_failed)
+                ipc->opcode = RESULT_FAIL;
+            else
+                ipc->opcode = RESULT_SUCCESS;
+            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending message to the socket, opcode %d", ipc->opcode);
+            int ret = write(s, buffer, ipc->length);
             int written = 0;
             while (true) {
                 int ret = write(s, buffer+written, ipc->length - written);
