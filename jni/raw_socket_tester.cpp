@@ -23,8 +23,18 @@
 enum opcode_t : uint8_t {
     RESULT_SUCCESS = 0,
     RESULT_FAIL = 1,
-    HANDSHAKE_BEEF = 2,
-    HANDSHAKE_CHECKSUM = 3
+    ACK_ONLY = 2,
+    URG_ONLY = 3,
+    ACK_URG = 4,
+    PLAIN_URG = 5,
+    ACK_CHECKSUM_INCORRECT = 6,
+    ACK_CHECKSUM = 7,
+    URG_URG = 8,
+    URG_CHECKSUM = 9,
+    URG_CHECKSUM_INCORRECT = 10,
+    RESERVED_SYN = 11,
+    RESERVED_EST = 12,
+    RESULT_NOT_IMPLEMENTED = 61
 };
 
 struct ipcmsg {
@@ -85,10 +95,9 @@ int main() {
             // TODO: parse and process the message
 
             test_error result = test_failed;    // by default
-            if (ipc->opcode == HANDSHAKE_BEEF) {
+            if ( ipc->opcode >= ACK_ONLY && ipc->opcode <= RESERVED_EST ) {
                 u_int32_t source = 0, destination = 0;
                 u_int16_t src_port = 0, dst_port = 0;
-
                 for (int b = 0; b < 4; b++) {
                     source |= ( (buffer[2 + b]) & (char)0xFF ) << (8 * (3-b));
                     destination |= ( (buffer[2 + 4 + 2 + b]) & (char)0xFF ) << (8 * (3-b));
@@ -97,15 +106,53 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
-                result = runTest(source, src_port, destination, dst_port);
+                switch (ipc->opcode) {
+                    case ACK_ONLY:
+                        result = runTest_ack_only(source, src_port, destination, dst_port);
+                        break;
+                    case URG_ONLY:
+                        result = runTest_urg_only(source, src_port, destination, dst_port);
+                        break;
+                    case ACK_URG:
+                        result = runTest_ack_urg(source, src_port, destination, dst_port);
+                        break;
+                    case PLAIN_URG:
+                        result = runTest_plain_urg(source, src_port, destination, dst_port);
+                        break;
+                    case ACK_CHECKSUM_INCORRECT:
+                        result = runTest_ack_checksum_incorrect(source, src_port, destination, dst_port);
+                        break;
+                    case ACK_CHECKSUM:
+                        result = runTest_ack_checksum(source, src_port, destination, dst_port);
+                        break;
+                    case URG_URG:
+                        result = runTest_urg_urg(source, src_port, destination, dst_port);
+                        break;
+                    case URG_CHECKSUM:
+                        result = runTest_urg_checksum(source, src_port, destination, dst_port);
+                        break;
+                    case URG_CHECKSUM_INCORRECT:
+                        result = runTest_urg_checksum_incorrect(source, src_port, destination, dst_port);
+                        break;
+                    case RESERVED_SYN:   
+                        result = runTest_reserved_syn(source, src_port, destination, dst_port);
+                        break;
+                    case RESERVED_EST:
+                        result = runTest_reserved_est(source, src_port, destination, dst_port);
+                        break;
+                    default:
+                        result = test_not_implemented;
+                        break;
+                }
+                
             }
             memset(buffer, 0, BUFLEN);
 
             ipc->length = 1+1;
-            if (result == test_failed)
-                ipc->opcode = RESULT_FAIL;
-            else
+            if (result == test_complete)
                 ipc->opcode = RESULT_SUCCESS;
+            else
+                ipc->opcode = RESULT_FAIL;
             __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending message to the socket, opcode %d", ipc->opcode);
             int ret = write(s, buffer, ipc->length);
             memset(buffer, 0, BUFLEN);

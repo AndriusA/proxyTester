@@ -41,7 +41,8 @@ enum test_error {
     receive_timeout,
     sequence_error,
     test_failed,
-    test_complete
+    test_complete,
+    test_not_implemented,
 };
 
 static inline uint16_t csum_add(uint16_t csum, uint16_t addend)
@@ -59,7 +60,18 @@ static inline uint16_t csum_sub(uint16_t csum, uint16_t addend)
 
 void printBufferHex(char *buffer, int length);
 void printPacketInfo(struct iphdr *ip, struct tcphdr *tcp);
-test_error runTest(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+
+test_error runTest_ack_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
 
 #endif
 

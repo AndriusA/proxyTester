@@ -107,13 +107,15 @@ public class RawSocketTester extends Test
             Log.e(TAG, "LocalServerSocket thread interrupted", e);
         }
         
+        Log.d(TAG, Integer.toString(mResults.size()) + " results");
+        Log.d(TAG, this.getPostResults());
         return Test.TEST_COMPLEX; 
     }
 
     public String getPostResults() {
         String ret = "";
         for (TCPTest result : mResults) {
-            ret += ret.toString();
+            ret += result.toString();
         }
         return ret;
     }
@@ -290,6 +292,12 @@ public class RawSocketTester extends Test
             this.srcPort = srcPort;
         }
         public TCPTest(TCPTest t, boolean result) {
+            this.name = t.name;
+            this.opcode = t.opcode;
+            this.src = t.src;
+            this.srcPort = t.srcPort;
+            this.dst = t.dst;
+            this.dstPort = t.dstPort;
             this.result = result;
         }
         public String toString() {

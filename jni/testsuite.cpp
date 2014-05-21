@@ -318,7 +318,7 @@ test_error setupSocket(int &sock) {
     return success;
 }
 
-test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
+test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
     int sock;
     char buffer[BUFLEN] = {0};
     struct iphdr *ip;
@@ -366,3 +366,43 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         return test_complete;
 }
 
+test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
+test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    return test_not_implemented;
+}
