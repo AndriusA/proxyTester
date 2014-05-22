@@ -67,29 +67,30 @@ test_error validPacket(struct iphdr *ip, struct tcphdr *tcp,
     }
 }
 
-test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
+int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
     while (true) {
         int length = recv(sock, (char*)ip, BUFLEN, 0);
         // __android_log_print(ANDROID_LOG_DEBUG, TAG, "Received %d bytes \n", length);
         if (length == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return receive_timeout;
-            else
-                return receive_error;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            //     return receive_timeout;
+            // else
+            //     return receive_error;
+            return length;
         }
 
         if (validPacket(ip, tcp, exp_src, exp_dst) == success) {
             printPacketInfo(ip, tcp);
             printBufferHex((char*)ip, length);
-            break;
+            return length;
         }
         else {
             // __android_log_print(ANDROID_LOG_DEBUG, TAG, "Packet does not match connection, continue waiting");
         }
     }
-    return success;
+    // return success;
 }
 
 test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) {
@@ -101,22 +102,44 @@ test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t
     return success;
 }
 
-test_error receiveTcpSynAck(uint32_t seq_local, int sock, struct iphdr *ip, struct tcphdr *tcp,
-    struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
+test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
+            struct iphdr *ip, struct tcphdr *tcp,
+            struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
+            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
 {
-    test_error ret = receivePacket(sock, ip, tcp, exp_src, exp_dst);
-    if (ret != success) 
-        return ret;
+    int packet_length = receivePacket(sock, ip, tcp, exp_src, exp_dst);
+    if (packet_length < 0) 
+        return receive_error;
+    if (!tcp->syn || !tcp->ack) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "Not a SYNACK packet");
+        return protocol_error;
+    }
     if (seq_local != ntohl(tcp->ack_seq)) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet unexpected ACK number: %d, %d", seq_local, ntohl(tcp->ack_seq));
         return sequence_error;
     }
-    undo_natting(ip, tcp);
+    if (synack_urg != 0 && ntohs(tcp->urg_ptr) != synack_urg) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet expected urg %04X, got: %04X", synack_urg, ntohs(tcp->urg_ptr));
+        return synack_error_urg;
+    }
+    if (synack_check != 0) {
+        uint16_t check = undo_natting(ip, tcp);
+        if (synack_check != check) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet expected check %04X, got: %04X", synack_check, check);
+            return synack_error_urg;
+        }
+    }
+    if (synack_res != 0 && synack_res != (tcp->res1 & 0xFF) ) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xFF));
+        return synack_error_urg;
+    }
+    
     return success;
 }
 
 test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp) 
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
 {
     // IP packet with TCP and no payload
     int datalen = 0;
@@ -125,8 +148,9 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->source     = src->sin_port;
     tcp->dest       = dst->sin_port;
     tcp->seq        = htonl(random() % 65535);
-    tcp->ack_seq    = htonl(0xbeef0001);
-    tcp->doff       = 5;    // Data offset 5 octets (no options)
+    tcp->ack_seq    = htonl(syn_ack);
+    tcp->res1       = syn_res & 0xFF;           // 4 bits reserved field
+    tcp->doff       = 5;                        // Data offset 5 octets (no options)
     tcp->ack        = 0;
     tcp->psh        = 0;
     tcp->rst        = 0;
@@ -134,12 +158,13 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->syn        = 1;
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
+    tcp->urg_ptr    = htons(syn_urg);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     printPacketInfo(ip, tcp);
 }
 
-test_error buildTcpHandshakeAck(struct sockaddr_in *src, struct sockaddr_in *dst,
+test_error buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote) 
 {
@@ -218,12 +243,14 @@ test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
 
 test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote)
+                uint32_t &seq_local, uint32_t &seq_remote,
+                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
+                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
 {
     test_error ret;
     seq_local = 0;
     seq_remote = 0;
-    buildTcpSyn(src, dst, ip, tcp);
+    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res);
     seq_local = ntohl(tcp->seq) + 1;
     ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success) {
@@ -232,7 +259,7 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     }
 
     // Receive and verify that incoming packet source is our destination and vice-versa
-    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src);
+    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res);
     seq_remote = ntohl(tcp->seq) + 1;
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
@@ -240,7 +267,7 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     }
     __android_log_print(ANDROID_LOG_DEBUG, TAG, "SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
-    buildTcpHandshakeAck(src, dst, ip, tcp, seq_local, seq_remote);
+    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
     ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP handshake ACK failure: %s", strerror(errno));
@@ -259,15 +286,18 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
     if (ret != success)
         return ret;
 
-    ret = receivePacket(socket, ip, tcp, dst, src);
+    int len = receivePacket(socket, ip, tcp, dst, src);
     bool finack_received = false;
-    if (ret == success) {
+    if (len > 0) {
         if (tcp->fin && tcp->ack) {
             finack_received = true;
             seq_remote = ntohl(tcp->ack_seq) + 1;
+        } else if (!tcp->fin) {
+            // Must be a packet with FIN flag set
+            return protocol_error;
         }
     } else {
-        return ret;
+        return receive_error;
     }
 
     buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, NULL, 0);
@@ -276,8 +306,8 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
         return ret;
 
     if (!finack_received) {
-        ret = receivePacket(socket, ip, tcp, dst, src);
-        if (ret != success) {
+        int len = receivePacket(socket, ip, tcp, dst, src);
+        if (len < 0) {
             __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP FINACK ACK not received, %d", ret);
         }
         else {
@@ -287,8 +317,7 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
     } else {
         return success;
     }
-
-
+    return success;
 }
 
 test_error setupSocket(int &sock) {
@@ -309,7 +338,7 @@ test_error setupSocket(int &sock) {
     }
 
     struct timeval tv;
-    tv.tv_sec = 30;  /* 30 Secs Timeout */
+    tv.tv_sec = 10;  /* 10 Secs Timeout */
     tv.tv_usec = 0;  // Not init'ing this can cause strange errors
     if ( setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) == -1 ) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "setsockopt receive timeout failed: %s", strerror(errno));
@@ -318,44 +347,57 @@ test_error setupSocket(int &sock) {
     return success;
 }
 
-test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
+test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
+            uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
+            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+            char *send_payload, int send_length, char *expect_payload, int expect_length)
+{
     int sock;
     char buffer[BUFLEN] = {0};
     struct iphdr *ip;
     struct tcphdr *tcp;
+    struct sockaddr_in src, dst;
+    uint32_t seq_local, seq_remote;
+    ip = (struct iphdr*) buffer;
+    tcp = (struct tcphdr*) (buffer + IPHDRLEN);
 
     if (setupSocket(sock) != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Socket setup failed: %s", strerror(errno));
         return test_failed;
     }
 
-    ip = (struct iphdr*) buffer;
-    tcp = (struct tcphdr*) (buffer + IPHDRLEN);
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Typecasting ok");
-
-    struct sockaddr_in src, dst;
     src.sin_family = AF_INET;
     src.sin_port = htons(src_port);
     src.sin_addr.s_addr = htonl(source);
     dst.sin_family = AF_INET;
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
-    uint32_t seq_local, seq_remote;
 
-    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote) != success) {
+    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
+        syn_ack, syn_urg, syn_res, 
+        synack_urg, synack_check, synack_res) != success)
+    {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP handshake failed: %s", strerror(errno));
         return test_failed;
     }
 
-    char sendString[] = "HELLO";
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending String \"%s\", of length %d\n", sendString, strlen(sendString));
     memset(buffer, 0, BUFLEN);
-    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, sendString, strlen(sendString));
+    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, send_payload, send_length);
     test_error ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
     if (ret == success) {
-        ret = receivePacket(sock, ip, tcp, &dst, &src);
+        int receiveLength = receivePacket(sock, ip, tcp, &dst, &src);
+        int dataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
         // TODO: handle the new sequence numbers
         seq_local = ntohl(tcp->ack_seq);
+        if (dataLength > 0) {
+            seq_remote = seq_remote + dataLength;
+            buildTcpAck(&src, &dst, ip, tcp, seq_local, seq_remote);
+            ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
+            if (ret != success) {
+                __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP Data ACK failure: %s", strerror(errno));
+            }
+        }
+        //TODO: check the payload for expected value
     }
 
     shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
@@ -364,6 +406,28 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
         return test_failed;
     else
         return test_complete;
+}
+
+test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
+    uint32_t syn_ack = 0xbeef0001;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    int expect_length = 4;
+    char expect_payload[expect_length];
+    expect_payload[0] = (syn_ack >> 8*3) & 0xFF;
+    expect_payload[1] = (syn_ack >> 8*2) & 0xFF;
+    expect_payload[2] = (syn_ack >> 8*1) & 0xFF;
+    expect_payload[3] = syn_ack & 0xFF;
+    
+    runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 
 test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
