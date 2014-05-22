@@ -43,7 +43,7 @@ struct ipcmsg {
 };
 
 int main() {
-    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting TCPTester service v%d", 2);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting TCPTester service v%d", 6);
     int s, t, len;
     struct sockaddr_un local;
     char buffer[BUFLEN];
@@ -106,6 +106,7 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
+                __android_log_print(ANDROID_LOG_DEBUG, TAG, "Selecting test for opcode %d", ipc->opcode);
                 switch (ipc->opcode) {
                     case ACK_ONLY:
                         result = runTest_ack_only(source, src_port, destination, dst_port);

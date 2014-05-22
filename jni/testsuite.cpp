@@ -360,6 +360,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     uint32_t seq_local, seq_remote;
     ip = (struct iphdr*) buffer;
     tcp = (struct tcphdr*) (buffer + IPHDRLEN);
+    char *data = buffer + IPHDRLEN + TCPHDRLEN;
 
     if (setupSocket(sock) != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Socket setup failed: %s", strerror(errno));
@@ -386,6 +387,14 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     test_error ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
     if (ret == success) {
         int receiveLength = receivePacket(sock, ip, tcp, &dst, &src);
+
+        if (memcmp(data, expect_payload, expect_length) != 0) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "Payload wrong value, expected for iplen %d, tcplen %d:", IPHDRLEN, TCPHDRLEN);
+            printBufferHex(data, expect_length);
+            printBufferHex(expect_payload, expect_length);
+            ret = test_failed;
+        }
+
         int dataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
         // TODO: handle the new sequence numbers
         seq_local = ntohl(tcp->ack_seq);
@@ -397,7 +406,6 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
                 __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP Data ACK failure: %s", strerror(errno));
             }
         }
-        //TODO: check the payload for expected value
     }
 
     shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
@@ -425,42 +433,156 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     expect_payload[2] = (syn_ack >> 8*1) & 0xFF;
     expect_payload[3] = syn_ack & 0xFF;
     
-    runTest(source, src_port, destination, dst_port,
+    return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 
 test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0xbe02;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    int expect_length = 2;
+    char expect_payload[expect_length];
+    expect_payload[0] = (syn_urg >> 8) & 0xFF;
+    expect_payload[1] = syn_urg & 0xFF;
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0xbeef0003;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0xbe03;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0xbe04;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0xbeef0005;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0xbeef;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0xbeef0006;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0xbeef;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0xbe07;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0xbe07;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0xbe08;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0xbeef;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0xbe09;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0xbeef;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
