@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2014 Andrius Aucinas <andrius.aucinas@cl.cam.ac.uk>
+ * 
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #include <android/log.h>
 #include "testsuite.hpp"
 #include "util.hpp"
@@ -24,7 +40,12 @@ void buildIPHeader(struct iphdr *ip,
     ip->check       = 0;
 }
 
-int tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
+// Computes checksum of a TCP packet by creating a pseudoheader
+// from provided IP packet and appending it after the payload.
+// Since the checksum is a one's complement, 16-bit sum, appending
+// or prepending has no difference other than having to be careful
+// to add one zero-padding byte after data if length is not even
+uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
     // Add pseudoheader at the end of the packet for simplicity,
     struct pseudohdr * pseudoheader;
     // Need to add padding between data and pseudoheader
@@ -38,11 +59,20 @@ int tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
     pseudoheader->proto = ip->protocol;
     pseudoheader->length = htons(TCPHDRLEN + datalen);
     // compute chekcsum from the bound of the tcp header to the appended pseudoheader
-    int checksum = comp_chksum((uint16_t*) tcp,
+    uint16_t checksum = comp_chksum((uint16_t*) tcp,
             TCPHDRLEN + datalen + padding + PHDRLEN);
     return checksum;
 }
 
+// Function very specific to our tests and relies on packet checksum
+// being computed in a specific way:
+//      - The sending side decides the target checksum value
+//      - Subtracts the destination IP address and port from that value
+//      - If there is an intermediate NAT, it hopefully only modifies
+//        the destination port and/or address and recomputes checksum
+//        according to RFC3022
+//      - It is sufficient to add back the (potentially new) destination address
+//        to the received checksum to obtain the sender's target one
 uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
     uint32_t checksum = ntohs(tcp->check);
     // Add back destination (own!) IP address and port number to undo what NAT modifies
@@ -53,20 +83,43 @@ uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
     return (uint16_t) checksum;
 }
 
-test_error validPacket(struct iphdr *ip, struct tcphdr *tcp,
+// Check if the received packet is a valid one:
+// the IP addresses and port numbers match the expected ones.
+// We are using RAW sockets, which get a copy all incoming TCP traffic,
+// so we need to filter out the packets that are not for us.
+//
+// param ip         IP header
+// param tcp        TCP header
+// param exp_src    expected packet source address (IP and port)
+// param exp_dst    expected packet destination address (IP and port)
+// return           true or false
+bool validPacket(struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
     if ( ip->saddr != exp_src->sin_addr.s_addr || ip->daddr != exp_dst->sin_addr.s_addr ) {
         // __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected IP address");
-        return invalid_packet;
+        return false;
     } else if ( tcp->source != exp_src->sin_port || tcp->dest != exp_dst->sin_port ) {
         // __android_log_print(ANDROID_LOG_ERROR, TAG, "Corrupted packet received: unexpected port number");
-        return invalid_packet;
+        return false;
     } else {
-        return success;
+        return true;
     }
 }
 
+// Receive one packet from the given socket.
+// Blocks until there is a valid packet matching the expected connection
+// or until recv fails (e.g. times out or the socket is closed).
+//
+// TODO: better logic for packet receive failure - currently could wait for a long
+// time until recv fails (times out) if there is other TCP traffic
+//
+// param sock       The socket
+// param ip         IP header
+// param tcp        TCP header
+// param exp_src    expected packet source address (IP and port)
+// param exp_dst    expected packet destination address (IP and port)
+// return           length of the packet read or -1 if recv returned -1
 int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
@@ -81,7 +134,7 @@ int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
             return length;
         }
 
-        if (validPacket(ip, tcp, exp_src, exp_dst) == success) {
+        if (validPacket(ip, tcp, exp_src, exp_dst)) {
             printPacketInfo(ip, tcp);
             printBufferHex((char*)ip, length);
             return length;
@@ -102,6 +155,21 @@ test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t
     return success;
 }
 
+// Function to receive SYNACK packet of TCP's three-way handshake.
+// Wraps the normal receivePacket function call with SYNACK specific logic,
+// checking for the right flags, sequence numbers and our testsuite-specific
+// checks for the right values in the different parts of the header.
+//
+// param seq_local      local sequence number (check against ack)
+// param sock           socket to receive synack from
+// param ip             IP header
+// param tcp            TCP header
+// param exp_src        expected source address (remote!)
+// param exp_dst        expected destination address (local!)
+// param synack_urg     expected UGR pointer value
+// param synack_check   expected checksum value (after running undo_natting)
+// param synack_res     expected reserved field value
+// return               execution status - success or a number of possible errors
 test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
             struct iphdr *ip, struct tcphdr *tcp,
             struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
@@ -137,7 +205,10 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
     return success;
 }
 
-test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+// Build a TCP/IP SYN packet with the given
+// ACK number, URG pointer and reserved field values
+// Packet is pass-by-reference, new values stored there
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
 {
@@ -164,7 +235,9 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     printPacketInfo(ip, tcp);
 }
 
-test_error buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
+// Build a TCP/IP ACK packet with the given
+// sequence numbers, everything else as standard, valid TCP
+void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote) 
 {
@@ -189,6 +262,8 @@ test_error buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
     printPacketInfo(ip, tcp);
 }
 
+// Build a TCP/IP FIN packet with the given
+// sequence numbers, everything else as standard, valid TCP
 test_error buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote) 
@@ -214,6 +289,18 @@ test_error buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     printPacketInfo(ip, tcp);
 }
 
+// Build a TCP/IP data packet with the given
+// sequence numbers, reserved field value and data
+//
+// param src        Source address
+// param dst        Destination address
+// param ip         IP header
+// param tcp        TCP header
+// param seq_local  local sequence number
+// param seq_remote remote sequence number
+// param reserved   reserved field value
+// param data       byte array of data
+// param datalen    length of data to be sent
 test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote,
@@ -244,6 +331,24 @@ test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     printBufferHex((char*)ip, IPHDRLEN + TCPHDRLEN + datalen);   
 }
 
+// TCP handshake function, parametrised with a bunch of values for our testsuite
+// 
+// param src        source address
+// param dst        destination address
+// param socket     RAW socket
+// param ip         IP header (for reading and writing)
+// param tcp        TCP header (for reading and writing)
+// param buffer     the whole of the read/write buffer for headers and data
+// param seq_local  local sequence number (reference, used for returning the negotiated number)
+// param seq_remote remoe sequence number (reference, used for returning the negotiated number)
+// param syn_ack    SYN packet ACK value to be sent
+// param syn_urg    SYN packet URG pointer to be sent
+// param syn_res    SYN packet reserved field value to be sent
+// param synack_urg expected SYNACK packet URG pointer value
+// param synack_check expected SYNACK packet checksum value (after undoing NATting recalculation)
+// param synack_res expected SYNACK packet reserved field value
+// return           success if handshake has been successful with all received values matching expected ones,
+//                  error code otherwise
 test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote,
@@ -254,12 +359,12 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     seq_local = 0;
     seq_remote = 0;
     buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res);
-    seq_local = ntohl(tcp->seq) + 1;
     ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP SYN packet failure: %s", strerror(errno));
         return ret;
     }
+    seq_local = ntohl(tcp->seq) + 1;
 
     // Receive and verify that incoming packet source is our destination and vice-versa
     ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res);
@@ -279,6 +384,11 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     return success;
 }
 
+// Cleanly shutdown the connection with the
+// FIN  -> 
+//      <- FINACK / FIN
+// ACK  ->
+//      <- ACK if only FIN previously
 test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote)
@@ -323,6 +433,11 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
     return success;
 }
 
+// Setup RAW socket
+// setsockopt calls for:
+//      - allowing to manipulate full packet down to IP layer (IPPROTO_IP, IP_HDRINCL)
+//      - timeout on recv'ing packets (SOL_SOCKET, SO_RCVTIMEO)
+// param sock       socket as reference
 test_error setupSocket(int &sock) {
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock == -1) {
@@ -350,6 +465,15 @@ test_error setupSocket(int &sock) {
     return success;
 }
 
+// Generic function for running any test. Takes all parameters and runs the rest of the functions:
+//      1. Sets up a new socket
+//      2. Performs the parametrised three-way handshake
+//      3. Sends a piece of data if the connection has been opened successfully
+//      4. Expects a specific data response back (returns error code if the result doesn't match)
+//      5. ACKs the received data
+//      6. Cleanly shuts down the connection
+//
+// return   test_failed or test_complete codes depending on the outcome
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
             uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
             uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
