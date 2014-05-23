@@ -131,8 +131,8 @@ public class RawSocketTester extends Test
         basicTests.add(new TCPTest("URG-URG", 8));
         basicTests.add(new TCPTest("URG-checksum", 9));
         basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        // basicTests.add(new TCPTest("Reserved-syn", 11));
-        // basicTests.add(new TCPTest("Reserved-est", 12));
+        basicTests.add(new TCPTest("Reserved-syn", 11));
+        basicTests.add(new TCPTest("Reserved-est", 12));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         // TODO: add seed in production

@@ -130,9 +130,10 @@ public class SocketTesterServer extends Thread {
         byte[] response = this.receiveCommand();
         // Magic opcode from IPC "protocol"
         if (response[1] == 0) { 
-            Log.d(TAG, "Test successful");    
+            Log.d(TAG, "Test successful");
             return true;
         } else {
+            Log.d(TAG, "Test failed");
             return false;
         }
     }

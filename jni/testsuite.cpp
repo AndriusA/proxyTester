@@ -129,8 +129,8 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
             return synack_error_urg;
         }
     }
-    if (synack_res != 0 && synack_res != (tcp->res1 & 0xFF) ) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xFF));
+    if (synack_res != 0 && synack_res != (tcp->res1 & 0xF) ) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xF));
         return synack_error_urg;
     }
     
@@ -149,7 +149,7 @@ test_error buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->dest       = dst->sin_port;
     tcp->seq        = htonl(random() % 65535);
     tcp->ack_seq    = htonl(syn_ack);
-    tcp->res1       = syn_res & 0xFF;           // 4 bits reserved field
+    tcp->res1       = syn_res & 0xF;           // 4 bits reserved field
     tcp->doff       = 5;                        // Data offset 5 octets (no options)
     tcp->ack        = 0;
     tcp->psh        = 0;
@@ -183,6 +183,7 @@ test_error buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->syn        = 0;
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
+    tcp->urg_ptr    = 0;
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     printPacketInfo(ip, tcp);
@@ -216,6 +217,7 @@ test_error buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
 test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote,
+            uint8_t reserved,
             char data[], int datalen)
 {
     char *dataStart = (char*) ip + IPHDRLEN + TCPHDRLEN;
@@ -226,6 +228,7 @@ test_error buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->dest       = dst->sin_port;
     tcp->seq        = htonl(seq_local);
     tcp->ack_seq    = htonl(seq_remote);
+    tcp->res1       = reserved & 0xF;
     tcp->doff       = 5;
     tcp->ack        = 1;
     tcp->psh        = 1;
@@ -300,7 +303,7 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
         return receive_error;
     }
 
-    buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, NULL, 0);
+    buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, 0, NULL, 0);
     ret = sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
     if (ret != success)
         return ret;
@@ -350,6 +353,7 @@ test_error setupSocket(int &sock) {
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
             uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
             uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+            uint8_t data_out_res, uint8_t data_in_res,
             char *send_payload, int send_length, char *expect_payload, int expect_length)
 {
     int sock;
@@ -383,7 +387,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     }
 
     memset(buffer, 0, BUFLEN);
-    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, send_payload, send_length);
+    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, data_out_res, send_payload, send_length);
     test_error ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
     if (ret == success) {
         int receiveLength = receivePacket(sock, ip, tcp, &dst, &src);
@@ -395,16 +399,21 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
             ret = test_failed;
         }
 
+        if (tcp->res1 != (data_in_res & 0xF)) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "Data packet reserved field wrong value: %02X, expected %02X", tcp->res1, data_in_res & 0xF);
+            ret = test_failed;
+        }
+
         int dataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
         // TODO: handle the new sequence numbers
         seq_local = ntohl(tcp->ack_seq);
         if (dataLength > 0) {
             seq_remote = seq_remote + dataLength;
             buildTcpAck(&src, &dst, ip, tcp, seq_local, seq_remote);
-            ret = sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
-            if (ret != success) {
-                __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP Data ACK failure: %s", strerror(errno));
-            }
+            sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
+            // if (ret != success) {
+            //     __android_log_print(ANDROID_LOG_ERROR, TAG, "TCP Data ACK failure: %s", strerror(errno));
+            // }
         }
     }
 
@@ -423,6 +432,8 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -435,6 +446,7 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 
@@ -446,6 +458,8 @@ test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t dest
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -456,6 +470,7 @@ test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t dest
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -466,6 +481,8 @@ test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
     uint16_t synack_urg = 0xbe03;
     uint16_t synack_check = 0;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -474,6 +491,7 @@ test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -484,6 +502,8 @@ test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t des
     uint16_t synack_urg = 0xbe04;
     uint16_t synack_check = 0;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -492,6 +512,7 @@ test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t des
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -502,6 +523,8 @@ test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0xbeef;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -510,6 +533,7 @@ test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -520,6 +544,8 @@ test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0xbeef;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -528,6 +554,7 @@ test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -538,6 +565,8 @@ test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
     uint16_t synack_urg = 0xbe07;
     uint16_t synack_check = 0;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -546,6 +575,7 @@ test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -556,6 +586,8 @@ test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0xbeef;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -564,6 +596,7 @@ test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
@@ -574,6 +607,8 @@ test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0xbeef;
     uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
     
     char send_payload[] = "HELLO";
     int send_length = strlen(send_payload);
@@ -582,13 +617,120 @@ test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
 test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
-    return test_not_implemented;
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
+
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    uint8_t syn_res = 0b0001;
+    uint8_t synack_res = 0b0001;
+    test_error res1 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res1 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0001 passed");
+
+    syn_res = 0b0010;
+    synack_res = 0b0010;
+    test_error res2 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res2 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0010 passed");
+
+    syn_res = 0b0100;
+    synack_res = 0b0100;
+    test_error res3 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res3 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0100 passed");
+
+    syn_res = 0b1000;
+    synack_res = 0b1000;
+    test_error res4 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res1 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b1000 passed");
+
+    if (res1 == test_complete && res2 == test_complete && res3 == test_complete && res4 == test_complete) {
+        return test_complete;
+    } else {
+        return test_failed;
+    }
 }
 test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t syn_res = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+
+    uint8_t data_out_res = 0b0001;
+    uint8_t data_in_res = 0b0001;
+    test_error res1 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res1 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0001 passed");
+
+    data_out_res = 0b0010;
+    data_in_res = 0b0010;
+    test_error res2 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res2 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0010 passed");
+
+    data_out_res = 0b0100;
+    data_in_res = 0b0100;
+    test_error res3 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res3 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b0100 passed");
+
+    data_out_res = 0b1000;
+    data_in_res = 0b1000;
+    test_error res4 = runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+    if (res1 == test_complete)
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Reserved byte 0b1000 passed");
+
+    if (res1 == test_complete && res2 == test_complete && res3 == test_complete && res4 == test_complete) {
+        return test_complete;
+    } else {
+        return test_failed;
+    }
+
     return test_not_implemented;
 }
