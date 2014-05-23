@@ -13,7 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
- 
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +25,7 @@
 #include <android/log.h>
 
 #include "testsuite.hpp"
+#include "util.hpp"
 
 #ifndef TAG
 #define TAG "TCPTester-bin"
@@ -36,6 +37,8 @@
 
 #define SOCK_PATH "tcptester_socket"
 
+// IPC messaging opcodes for the different tests to be run;
+// Testing is orchestrated by the Java code, over local Unix sockets
 enum opcode_t : uint8_t {
     RESULT_SUCCESS = 0,
     RESULT_FAIL = 1,
@@ -53,20 +56,21 @@ enum opcode_t : uint8_t {
     RESULT_NOT_IMPLEMENTED = 61
 };
 
+// IPC message header, LTV-encoded (Length, Type, Value)
 struct ipcmsg {
     u_int8_t length;
     opcode_t opcode;
 };
 
 int main() {
-    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting TCPTester service v%d", 6);
+    LOGI("Starting TCPTester service v%d", 6);
     int s, t, len;
     struct sockaddr_un local;
     char buffer[BUFLEN];
     struct ipcmsg *ipc;
     ipc = (struct ipcmsg *) buffer;
 
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "Creating socket");
+    LOGD("Creating socket");
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Fatal: Error opening unix socket %s", strerror(errno));
         exit(1);
@@ -79,7 +83,7 @@ int main() {
     len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(local.sun_path+1);
     int ret;
 
-    __android_log_print(ANDROID_LOG_INFO, TAG, "Connecting from native to local socket");
+    LOGI("Connecting from native to local socket");
     if (connect(s, (struct sockaddr *)&local, len) == -1) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Fatal: Error connecting to unix socket %s", strerror(errno));
         exit(1);
@@ -88,16 +92,16 @@ int main() {
     int offset = 0;
     bool open = true;
     while (open) {
-        __android_log_print(ANDROID_LOG_INFO, TAG, "Receiving from socket, offset %d", offset);
+        LOGI("Receiving from socket, offset %d", offset);
         int n = recv(s, buffer+offset, BUFLEN-offset, 0);
-        __android_log_print(ANDROID_LOG_INFO, TAG, "Received %d bytes", n);
+        LOGI("Received %d bytes", n);
         if (n <= 0) {
             if (n < 0) {
                 __android_log_print(ANDROID_LOG_ERROR, TAG, "Error while receiving from local unix socket %s", strerror(errno));
                 open = false;
                 break;
             } else {
-                __android_log_print(ANDROID_LOG_DEBUG, TAG, "End of File");
+                LOGD("End of File");
                 open = false;
                 break;
             }
@@ -106,7 +110,7 @@ int main() {
         
         // IPC message read completely
         if (n >= ipc->length) {
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Payload: ");
+            LOGD("Payload: ");
             printBufferHex(buffer, ipc->length);
             // TODO: parse and process the message
 
@@ -122,7 +126,7 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
-                __android_log_print(ANDROID_LOG_DEBUG, TAG, "Selecting test for opcode %d", ipc->opcode);
+                LOGD("Selecting test for opcode %d", ipc->opcode);
                 switch (ipc->opcode) {
                     case ACK_ONLY:
                         result = runTest_ack_only(source, src_port, destination, dst_port);
@@ -170,10 +174,10 @@ int main() {
                 ipc->opcode = RESULT_SUCCESS;
             else
                 ipc->opcode = RESULT_FAIL;
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Sending message to the socket, opcode %d", ipc->opcode);
+            LOGD("Sending message to the socket, opcode %d", ipc->opcode);
             int ret = write(s, buffer, ipc->length);
             memset(buffer, 0, BUFLEN);
-            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Test complete");
+            LOGD("Test complete");
         }
         else {
             offset = n;

@@ -14,14 +14,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <android/log.h>
-#include "testsuite.hpp"
+#include "util.hpp"
 
 void printPacketInfo(struct iphdr *ip, struct tcphdr *tcp) {
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "TCP Checksum: %04X", ntohs(tcp->check));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "%s:%i --> ", inet_ntoa(*(struct in_addr*) &ip->saddr), ntohs(tcp->source));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "\t\t %s:%i", inet_ntoa(*(struct in_addr*) &ip->daddr), ntohs(tcp->dest));
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "\tSeq: %zu \tAck: %zu", ntohl(tcp->seq), ntohl(tcp->ack_seq));
+    LOGD("TCP Checksum: %04X", ntohs(tcp->check));
+    LOGD("%s:%i --> ", inet_ntoa(*(struct in_addr*) &ip->saddr), ntohs(tcp->source));
+    LOGD("\t\t %s:%i", inet_ntoa(*(struct in_addr*) &ip->daddr), ntohs(tcp->dest));
+    LOGD("\tSeq: %zu \tAck: %zu", ntohl(tcp->seq), ntohl(tcp->ack_seq));
 }
 
 void printBufferHex(char *buffer, int length) {
@@ -32,7 +31,7 @@ void printBufferHex(char *buffer, int length) {
         buf_ptr += sprintf(buf_ptr, "%02X ", buffer[i]);
     }
     *(buf_ptr+1) = '\0';
-    __android_log_print(ANDROID_LOG_DEBUG, TAG, "%s", buf_str);
+    LOGD("%s", buf_str);
 }
 
 uint16_t comp_chksum(uint16_t *addr, int len) {
@@ -50,4 +49,17 @@ uint16_t comp_chksum(uint16_t *addr, int len) {
     }
     sum = ~sum;
     return ((uint16_t) sum);
+}
+
+uint16_t csum_add(uint16_t csum, uint16_t addend)
+{
+    uint32_t res = (uint32_t)csum;
+    res = res + (uint32_t)addend;
+    res = res + ((res >> 16) & 0xFFFF);
+    return (uint16_t) res;
+}
+ 
+uint16_t csum_sub(uint16_t csum, uint16_t addend)
+{
+    return csum_add(csum, ~addend);
 }
