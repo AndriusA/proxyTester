@@ -3,7 +3,7 @@
       package="org.smarte.tcptester"
       android:versionCode="1"
       android:versionName="1.0">
-    <uses-sdk android:minSdkVersion="14" />
+    <uses-sdk android:minSdkVersion="8" />
     <application android:label="@string/app_name"
                  android:debuggable="true">
         <activity android:name=".TcpTester"

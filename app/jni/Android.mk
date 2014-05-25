@@ -21,23 +21,10 @@ TCPTESTER_SOURCES := \
         util.cpp \
         testsuite.cpp
 
-LOCAL_MODULE    := tcptester
-LOCAL_CFLAGS += -std=c++11
-LOCAL_C_INCLUDES += frameworks/base/include system/core/include
-LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog -pthread
-LOCAL_SRC_FILES := $(TCPTESTER_SOURCES)
+LOCAL_MODULE    	:= tcptester
+LOCAL_CPPFLAGS	 	+= -std=c++11
+LOCAL_C_INCLUDES 	+= frameworks/base/include system/core/include
+LOCAL_LDLIBS 		:= -L$(SYSROOT)/usr/lib -llog -pthread
+LOCAL_SRC_FILES 	:= $(TCPTESTER_SOURCES)
 
 include $(BUILD_EXECUTABLE)
-
-#
-#include $(CLEAR_VARS)
-#
-#SOURCES := \
-#        nfct-event.c
-#
-#LOCAL_MODULE    := netfilter
-#LOCAL_C_INCLUDES += frameworks/base/include system/core/include 
-#LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog
-#LOCAL_SRC_FILES := $(SOURCES)
-#
-#include $(BUILD_EXECUTABLE)

@@ -15,6 +15,7 @@
  */
 
 #include <android/log.h>
+#include <chrono>
 #include "testsuite.hpp"
 #include "util.hpp"
 
@@ -23,6 +24,8 @@
 #endif
 
 #define TCPWINDOW (BUFLEN - IPHDRLEN - TCPHDRLEN)
+
+const std::chrono::seconds sock_receive_timeout_sec(10);
 
 void buildIPHeader(struct iphdr *ip, 
             uint32_t source, uint32_t destination,
@@ -123,14 +126,13 @@ bool validPacket(struct iphdr *ip, struct tcphdr *tcp,
 int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst)
 {
+    std::chrono::time_point<std::chrono::system_clock> start, now;
+    start = std::chrono::system_clock::now();
     while (true) {
         int length = recv(sock, (char*)ip, BUFLEN, 0);
         // LOGD("Received %d bytes \n", length);
+        // Error reading from socket or reading timed out - failure either way
         if (length == -1) {
-            // if (errno == EAGAIN || errno == EWOULDBLOCK)
-            //     return receive_timeout;
-            // else
-            //     return receive_error;
             return length;
         }
 
@@ -140,10 +142,15 @@ int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
             return length;
         }
         else {
-            // LOGD("Packet does not match connection, continue waiting");
+            // Read a packet that belongs to some other connection
+            // try again unless we have exceeded receive timeout
+            now = std::chrono::system_clock::now();
+            if (now - start > sock_receive_timeout_sec) {
+                LOGD("Packet reading timed out");
+                return -1;
+            }
         }
     }
-    // return success;
 }
 
 bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) {
@@ -318,7 +325,7 @@ void buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->res1       = reserved & 0xF;
     tcp->doff       = 5;
     tcp->ack        = 1;
-    tcp->psh        = 1;
+    tcp->psh        = (datalen > 0 ? 1 : 0);
     tcp->rst        = 0;
     tcp->urg        = 0;
     tcp->syn        = 0;
@@ -410,7 +417,7 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
         return receive_error;
     }
 
-    buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, 0, NULL, 0);
+    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
     if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len)))
         return send_error;
 
@@ -452,7 +459,7 @@ test_error setupSocket(int &sock) {
     }
 
     struct timeval tv;
-    tv.tv_sec = 10;  /* 10 Secs Timeout */
+    tv.tv_sec = sock_receive_timeout_sec.count();
     tv.tv_usec = 0;  // Not init'ing this can cause strange errors
     if ( setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) == -1 ) {
         LOGE("setsockopt receive timeout failed: %s", strerror(errno));

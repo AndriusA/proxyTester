@@ -287,6 +287,8 @@ public class RawSocketTester extends Test
         return new String(hexChars);
     }
 
+    // Inner class representing each testcase and its result
+    // Together with covenience copy-constructors and toString for returning results 
     public class TCPTest {
         public String name;
         public byte opcode;
