@@ -1,18 +1,3 @@
-# Copyright (c) 2014 Andrius Aucinas <andrius.aucinas@cl.cam.ac.uk>
-# 
-# Permission to use, copy, modify, and distribute this software for any
-# rpose with or without fee is hereby granted, provided that the above
-# pyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-#
-
 #! /usr/bin/python
 
 from scapy.all import *
@@ -79,8 +64,8 @@ def process_packet(pkt_in):
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe03)
       pak=ip/SYNACK
 
-    elif (pkt_in[TCP].ack == 0xbeef0006 or pkt_in[TCP].urgptr == 0xbe08):
-      connectionTest[connID] = 8
+    elif (pkt_in[TCP].ack == 0xbeef0005 or pkt_in[TCP].urgptr == 0xbe09):
+      connectionTest[connID] = 9
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
       checksum = 0xbeef
@@ -91,8 +76,24 @@ def process_packet(pkt_in):
       del pak[TCP].chksum
       pak[TCP].chksum = checksum
 
-    elif (pkt_in[TCP].ack == 0xbeef0005 or pkt_in[TCP].urgptr == 0xbe09):
-      connectionTest[connID] = 9
+    elif (pkt_in[TCP].ack == 0xbeef000D):
+      connectionTest[connID] = 8
+      SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
+      pak=ip/SYNACK
+      # Different checksum to differentiate when which type of rewriting happens
+      checksum = 0xbeee
+      checksum = checksum_sub_32(checksum, ip2int(dst))
+      checksum = checksum_sub(checksum, dport)
+      checksum = checksum_sub_32(checksum, SYNACK.seq)
+      checksum = checksum_sub_32(checksum, SYNACK.ack)
+      print "SYNACK with checksum " + hex(checksum)
+      # Force TCP checksum to be recalculated
+      del pak[TCP].chksum
+      pak[TCP].chksum = checksum
+
+
+    elif (pkt_in[TCP].ack == 0xbeef0006 or pkt_in[TCP].urgptr == 0xbe05):
+      connectionTest[connID] = 6
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
       checksum = 0xbeef
