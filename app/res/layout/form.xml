@@ -7,15 +7,6 @@
             android:orientation="vertical"
             android:padding="3mm">
 
-        <TextView style="@style/item" android:text="@string/address"/>
-        <EditText style="@style/item" android:id="@+id/address"/>
-
-        <TextView style="@style/item" android:text="@string/port"/>
-        <EditText style="@style/item" android:id="@+id/port"/>
-
-        <!-- <TextView style="@style/item" android:text="@string/secret"/>
-        <EditText style="@style/item" android:id="@+id/secret" android:password="true"/>
- -->
         <Button style="@style/item" android:id="@+id/connect" android:text="@string/connect"/>
 
     </LinearLayout>

@@ -24,6 +24,9 @@
 #include <cstdio>
 #include <android/log.h>
 
+#ifndef UTIL
+#define UTIL
+
 #ifndef TAG
 #define TAG "TCPTester-bin"
 #endif
@@ -37,8 +40,29 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 
+enum test_error {
+    success,
+    syn_error,
+    synack_error,
+    synack_error_urg,
+    synack_error_check,
+    synack_error_res,
+    ack_error,
+    send_error,
+    invalid_packet,
+    receive_error,
+    receive_timeout,
+    sequence_error,
+    protocol_error,
+    test_failed,
+    test_complete,
+    test_not_implemented
+};
+
 void printPacketInfo(struct iphdr *ip, struct tcphdr *tcp);
 void printBufferHex(char *buffer, int length);
 uint16_t comp_chksum(uint16_t *addr, int len);
 uint16_t csum_add(uint16_t csum, uint16_t addend);
 uint16_t csum_sub(uint16_t csum, uint16_t addend);
+
+#endif

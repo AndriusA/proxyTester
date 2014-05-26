@@ -19,6 +19,7 @@ include $(CLEAR_VARS)
 TCPTESTER_SOURCES := \
         raw_socket_tester.cpp \
         util.cpp \
+        tcp_basic.cpp \
         testsuite.cpp
 
 LOCAL_MODULE    	:= tcptester

@@ -26,6 +26,10 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <chrono>
+
+#include "tcp_basic.hpp"
+#include "util.hpp"
 
 #ifndef TAG
 #define TAG "TCPTester-bin"
@@ -34,36 +38,9 @@
 #ifndef TESTSUITE
 #define TESTSUITE
 
-#define IPHDRLEN sizeof(struct iphdr)
-#define TCPHDRLEN sizeof(struct tcphdr)
-#define PHDRLEN sizeof(struct pseudohdr)
-
-struct pseudohdr {
-    uint32_t src_addr;
-    uint32_t dst_addr;
-    uint8_t padding;
-    uint8_t proto;
-    uint16_t length;
-};
-
-enum test_error {
-    success,
-    syn_error,
-    synack_error,
-    synack_error_urg,
-    synack_error_check,
-    synack_error_res,
-    ack_error,
-    send_error,
-    invalid_packet,
-    receive_error,
-    receive_timeout,
-    sequence_error,
-    protocol_error,
-    test_failed,
-    test_complete,
-    test_not_implemented
-};
+#ifndef BUFLEN
+#define BUFLEN 65535
+#endif
 
 // Test sending a specific value in the ACK field of a TCP SYN packet, nothing else changed.
 // ACK is set to 0xbeef0001 (opcode), once connection is established, payload contains this value
