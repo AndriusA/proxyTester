@@ -54,7 +54,6 @@ enum opcode_t : uint8_t {
     RESERVED_SYN = 11,
     RESERVED_EST = 12,
     RESULT_NOT_IMPLEMENTED = 51,
-    RESULT_SUCCESS_COMPLEX = 60   
 };
 
 // IPC message header, LTV-encoded (Length, Type, Value)
@@ -128,6 +127,9 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
+                uint8_t reserved = 0;
+                if (n > 2+4+2+4+2)
+                    reserved = buffer[2+4+2+4+2];
                 LOGD("Selecting test for opcode %d", ipc->opcode);
                 switch (ipc->opcode) {
                     case ACK_ONLY:
@@ -158,12 +160,10 @@ int main() {
                         result = runTest_urg_checksum_incorrect(source, src_port, destination, dst_port);
                         break;
                     case RESERVED_SYN:
-                        result_code = runTest_reserved_syn(source, src_port, destination, dst_port);
-                        result = test_complete;
+                        result = runTest_reserved_syn(source, src_port, destination, dst_port, reserved);
                         break;
                     case RESERVED_EST:
-                        result_code = runTest_reserved_est(source, src_port, destination, dst_port);
-                        result = test_complete;
+                        result = runTest_reserved_est(source, src_port, destination, dst_port, reserved);
                         break;
                     default:
                         result = test_not_implemented;
@@ -175,14 +175,7 @@ int main() {
 
             ipc->length = 1+1;
             if (result == test_complete) {
-                if (result_code == 0)
-                    ipc->opcode = RESULT_SUCCESS;
-                else if (result_code >= test_complete_complex_bits && result_code <= test_complete_complex_bits + 0b1111) {
-                    ipc->opcode = RESULT_SUCCESS_COMPLEX;
-                    ipc->length = 1 + 1 + 1;
-                    buffer[sizeof(struct ipcmsg)] = (uint8_t)(result_code - test_complete_complex_bits);
-                    LOGD("Sending bit result %02X, for result_code %d", buffer[2], result_code);
-                }
+                ipc->opcode = RESULT_SUCCESS;
             }
             else
                 ipc->opcode = RESULT_FAIL;

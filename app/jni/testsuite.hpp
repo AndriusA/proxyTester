@@ -62,9 +62,7 @@ enum test_error {
     protocol_error,
     test_failed,
     test_complete,
-    test_not_implemented,
-    test_complete_complex_bits = 60,
-    test_failed_complex = 80
+    test_not_implemented
 };
 
 // Test sending a specific value in the ACK field of a TCP SYN packet, nothing else changed.
@@ -98,12 +96,11 @@ test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
 test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
 // Testing whether packets with reserved bits set go through with the bits set during the handshake
 // Currently only successful if setting every one of them individually succeeds
-// returns test_complete_complex_bits + bitmap of the passed bits
-int runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port, uint8_t reserved);
 // Testing whether packets with reserved bits set go through with the bits set during data transmission/acking
 // Currently only successful if setting every one of them individually succeeds
 // returns test_complete_complex_bits + bitmap of the passed bits
-int runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port, uint8_t reserved);
 
 #endif
 

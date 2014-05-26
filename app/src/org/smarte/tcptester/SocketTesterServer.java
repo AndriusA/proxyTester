@@ -122,7 +122,7 @@ public class SocketTesterServer extends Thread {
         Log.d(TAG, "Finished");
     }
 
-    public int runTest(byte opcode, InetAddress src, int srcPort, InetAddress dst, int dstPort) {
+    public boolean runTest(byte opcode, InetAddress src, int srcPort, InetAddress dst, int dstPort, byte extra) {
         // Command consists of a number of bytes:
         // - 1 for length
         // - 1 for opcode
@@ -131,6 +131,8 @@ public class SocketTesterServer extends Thread {
         // - 4 for destination ip address
         // - 2 for destination port number
         byte commandLength = 1+1+4+2+4+2;
+        if (extra > 0)
+            commandLength++;
         ByteBuffer command = ByteBuffer.allocate(commandLength);
         // LTV (Length-Type-Value) encoded commands
         command.put(commandLength);
@@ -139,6 +141,8 @@ public class SocketTesterServer extends Thread {
         command.putShort((short) srcPort);
         command.put(dst.getAddress());
         command.putShort((short) dstPort);
+        if (extra > 0)
+            command.put(extra);
         command.flip();
         // Send to the local (unix) socket
         this.send(command.array());    
@@ -147,16 +151,11 @@ public class SocketTesterServer extends Thread {
         // Magic opcode from IPC "protocol"
         if (response[1] == 0) { 
             Log.d(TAG, "Test successful");
-            return 0;
-        }
-        else if (response[1] == 60 && response[0] > 2) {
-            // Third bit must be the actual result
-            int result_byte = response[2];
-            return 60 + result_byte;
+            return true;
         }
         else {
             Log.d(TAG, "Test failed");
-            return 1;
+            return false;
         }
     }
 

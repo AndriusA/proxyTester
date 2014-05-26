@@ -109,13 +109,8 @@ public class RawSocketTester extends Test
             try {
                 iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
                 // Try runnig the test regardless
-                int res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
-                if (res == 0)
-                    mResults.add(new TCPTest(test, true));
-                else if (res >= 60 && res <= 60 + 15)   // [60..60+0b1111]
-                    mResults.add(new TCPTest(test, true, res-60));
-                else 
-                    mResults.add(new TCPTest(test, false));
+                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort, (byte)test.extras);
+                mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
                 Log.e(TAG, "Exception while setting iptables rule or running test", e);
             } finally {
@@ -149,17 +144,23 @@ public class RawSocketTester extends Test
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
-        basicTests.add(new TCPTest("ACK-only", 2));
-        basicTests.add(new TCPTest("URG-only", 3));
-        basicTests.add(new TCPTest("ACK-URG", 4));
-        basicTests.add(new TCPTest("plain-URG", 5));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
-        basicTests.add(new TCPTest("ACK-checksum", 7));
-        basicTests.add(new TCPTest("URG-URG", 8));
-        basicTests.add(new TCPTest("URG-checksum", 9));
-        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        basicTests.add(new TCPTest("Reserved-syn", 11));
-        basicTests.add(new TCPTest("Reserved-est", 12));
+        // basicTests.add(new TCPTest("ACK-only", 2));
+        // basicTests.add(new TCPTest("URG-only", 3));
+        // basicTests.add(new TCPTest("ACK-URG", 4));
+        // basicTests.add(new TCPTest("plain-URG", 5));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
+        // basicTests.add(new TCPTest("ACK-checksum", 7));
+        // basicTests.add(new TCPTest("URG-URG", 8));
+        // basicTests.add(new TCPTest("URG-checksum", 9));
+        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        basicTests.add(new TCPTest("Reserved-est", 12, 8));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         // TODO: add seed in production
@@ -304,7 +305,7 @@ public class RawSocketTester extends Test
         public String name;
         public byte opcode;
         public boolean result = false;
-        public int result_extras = 0;
+        public int extras = 0;
         public InetAddress src;
         public int srcPort;
         public InetAddress dst;
@@ -312,6 +313,10 @@ public class RawSocketTester extends Test
         public TCPTest(String name, int opcode) {
             this.name = name;
             this.opcode = (byte) opcode;
+        }
+        public TCPTest(String name, int opcode, int extras) {
+            this(name, opcode);
+            this.extras = extras;
         }
         public TCPTest(TCPTest t) {
             this.name = t.name;
@@ -321,7 +326,7 @@ public class RawSocketTester extends Test
             this.dst = t.dst;
             this.dstPort = t.dstPort;
             this.result = t.result;
-            this.result_extras = t.result_extras;
+            this.extras = t.extras;
         }
         public TCPTest(TCPTest t, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
             this(t);
@@ -337,14 +342,14 @@ public class RawSocketTester extends Test
         public TCPTest(TCPTest t, boolean result, int extras) {
             this(t);
             this.result = result;
-            this.result_extras = extras;
+            this.extras = extras;
         }
         public String toString() {
             return "Test " + name 
                 + " from " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
                 + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
                 + (result == true ? " passed" : " failed")
-                + (result_extras > 0 ? " " + Integer.toBinaryString(result_extras) : "") + "\n";
+                + (extras > 0 ? " " + Integer.toBinaryString(extras) : "") + "\n";
         }
     }
 }
