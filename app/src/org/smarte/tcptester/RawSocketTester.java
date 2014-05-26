@@ -47,7 +47,8 @@ public class RawSocketTester extends Test
 {
     public static final String TAG = "TCPTester";
     private static final String TESTER_BINARY = "tcptester";
-    private static final String IPTABLES_CMD = "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --dport %d -j DROP && iptables --list";
+    private static final String IPTABLES_CMD = 
+        "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP && iptables --list";
 
     private SocketTesterServer mTesterServer;
     private Context mContext;
@@ -103,14 +104,19 @@ public class RawSocketTester extends Test
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
         for (TCPTest test : tests) {
             Log.d(TAG, "Running test " + test.toString());
-            boolean iptablesAdded = preventRstPort(test.dstPort);
-            // Try runnig the test regardless
-            boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
-            mResults.add(new TCPTest(test, res));
-            if (iptablesAdded) {
-                if (!allowRstPort(test.dstPort)) {
+
+            boolean iptablesAdded = false;
+            try {
+                iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
+                // Try runnig the test regardless
+                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
+                mResults.add(new TCPTest(test, res));
+            } catch (Exception e) {
+                Log.e(TAG, "Exception while setting iptables rule or running test", e);
+            } finally {
+                boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
+                if (iptablesAdded && !allowed)
                     Log.e(TAG, "IPTables rule added but not removed!");
-                }
             }
         } 
        
@@ -214,8 +220,8 @@ public class RawSocketTester extends Test
         }
     }
     
-    private boolean preventRstPort(int port_num) {
-        String cmd = String.format(IPTABLES_CMD, 'A', port_num);
+    private boolean preventRst(int src_port, int dst_port, InetAddress dst) {
+        String cmd = String.format(IPTABLES_CMD, 'A', src_port, dst_port, dst.getHostAddress());
         Command shellCmd = new CommandCapture(0, cmd);
         Log.d(TAG, "Iptables command to execute: " + cmd);
         try {
@@ -245,8 +251,8 @@ public class RawSocketTester extends Test
         return true;
     }
 
-    private boolean allowRstPort(int port_num) {
-        String cmd = String.format(IPTABLES_CMD, 'D', port_num);
+    private boolean allowRst(int src_port, int dst_port, InetAddress dst) {
+        String cmd = String.format(IPTABLES_CMD, 'D', src_port, dst_port, dst.getHostAddress());
         Command shellCmd = new CommandCapture(1, cmd);
         Log.d(TAG, "Iptables command to execute: " + cmd);
         try {
