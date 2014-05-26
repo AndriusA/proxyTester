@@ -122,7 +122,7 @@ public class SocketTesterServer extends Thread {
         Log.d(TAG, "Finished");
     }
 
-    public boolean runTest(byte opcode, InetAddress src, int srcPort, InetAddress dst, int dstPort) {
+    public int runTest(byte opcode, InetAddress src, int srcPort, InetAddress dst, int dstPort) {
         // Command consists of a number of bytes:
         // - 1 for length
         // - 1 for opcode
@@ -147,10 +147,16 @@ public class SocketTesterServer extends Thread {
         // Magic opcode from IPC "protocol"
         if (response[1] == 0) { 
             Log.d(TAG, "Test successful");
-            return true;
-        } else {
+            return 0;
+        }
+        else if (response[1] == 60 && response[0] > 2) {
+            // Third bit must be the actual result
+            int result_byte = response[2];
+            return 60 + result_byte;
+        }
+        else {
             Log.d(TAG, "Test failed");
-            return false;
+            return 1;
         }
     }
 

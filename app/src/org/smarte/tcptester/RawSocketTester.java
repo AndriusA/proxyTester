@@ -109,8 +109,13 @@ public class RawSocketTester extends Test
             try {
                 iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
                 // Try runnig the test regardless
-                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
-                mResults.add(new TCPTest(test, res));
+                int res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort);
+                if (res == 0)
+                    mResults.add(new TCPTest(test, true));
+                else if (res >= 60 && res <= 60 + 15)   // [60..60+0b1111]
+                    mResults.add(new TCPTest(test, true, res-60));
+                else 
+                    mResults.add(new TCPTest(test, false));
             } catch (Exception e) {
                 Log.e(TAG, "Exception while setting iptables rule or running test", e);
             } finally {
@@ -299,6 +304,7 @@ public class RawSocketTester extends Test
         public String name;
         public byte opcode;
         public boolean result = false;
+        public int result_extras = 0;
         public InetAddress src;
         public int srcPort;
         public InetAddress dst;
@@ -307,28 +313,38 @@ public class RawSocketTester extends Test
             this.name = name;
             this.opcode = (byte) opcode;
         }
-        public TCPTest(TCPTest t, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
-            this.name = t.name;
-            this.opcode = t.opcode;
-            this.dst = dst;
-            this.dstPort = dstPort;
-            this.src = src;
-            this.srcPort = srcPort;
-        }
-        public TCPTest(TCPTest t, boolean result) {
+        public TCPTest(TCPTest t) {
             this.name = t.name;
             this.opcode = t.opcode;
             this.src = t.src;
             this.srcPort = t.srcPort;
             this.dst = t.dst;
             this.dstPort = t.dstPort;
+            this.result = t.result;
+            this.result_extras = t.result_extras;
+        }
+        public TCPTest(TCPTest t, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
+            this(t);
+            this.dst = dst;
+            this.dstPort = dstPort;
+            this.src = src;
+            this.srcPort = srcPort;
+        }
+        public TCPTest(TCPTest t, boolean result) {
+            this(t);
             this.result = result;
+        }
+        public TCPTest(TCPTest t, boolean result, int extras) {
+            this(t);
+            this.result = result;
+            this.result_extras = extras;
         }
         public String toString() {
             return "Test " + name 
                 + " from " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
                 + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
-                + (result == true ? " passed" : " failed") + "\n";
+                + (result == true ? " passed" : " failed")
+                + (result_extras > 0 ? " " + Integer.toBinaryString(result_extras) : "") + "\n";
         }
     }
 }

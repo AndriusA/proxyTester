@@ -755,7 +755,7 @@ test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+int runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
@@ -769,14 +769,17 @@ test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t 
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    uint8_t result = 0;
     uint8_t syn_res = 0b0001;
     uint8_t synack_res = 0b0001;
     test_error res1 = runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res1 == test_complete)
+    if (res1 == test_complete) {
         LOGD("Reserved byte 0b0001 passed");
+        result |= 0b0001;
+    }
 
     syn_res = 0b0010;
     synack_res = 0b0010;
@@ -784,8 +787,10 @@ test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res2 == test_complete)
+    if (res2 == test_complete) {
         LOGD("Reserved byte 0b0010 passed");
+        result |= 0b0010;
+    }
 
     syn_res = 0b0100;
     synack_res = 0b0100;
@@ -793,8 +798,10 @@ test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res3 == test_complete)
+    if (res3 == test_complete) {
         LOGD("Reserved byte 0b0100 passed");
+        result |= 0b0100;
+    }
 
     syn_res = 0b1000;
     synack_res = 0b1000;
@@ -802,17 +809,15 @@ test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res1 == test_complete)
+    if (res4 == test_complete) {
         LOGD("Reserved byte 0b1000 passed");
-
-    if (res1 == test_complete && res2 == test_complete && res3 == test_complete && res4 == test_complete) {
-        return test_complete;
-    } else {
-        return test_failed;
+        result |= 0b1000;
     }
+
+    return (int)test_complete_complex_bits + result;
 }
 
-test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+int runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
@@ -826,14 +831,17 @@ test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t 
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
 
+    uint8_t result = 0;
     uint8_t data_out_res = 0b0001;
     uint8_t data_in_res = 0b0001;
     test_error res1 = runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res1 == test_complete)
+    if (res1 == test_complete) {
         LOGD("Reserved byte 0b0001 passed");
+        result |= 0b0001;
+    }
 
     data_out_res = 0b0010;
     data_in_res = 0b0010;
@@ -841,8 +849,10 @@ test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res2 == test_complete)
+    if (res2 == test_complete) {
         LOGD("Reserved byte 0b0010 passed");
+        result |= 0b0010;
+    }
 
     data_out_res = 0b0100;
     data_in_res = 0b0100;
@@ -850,8 +860,10 @@ test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res3 == test_complete)
+    if (res3 == test_complete) {
         LOGD("Reserved byte 0b0100 passed");
+        result |= 0b0100;
+    }
 
     data_out_res = 0b1000;
     data_in_res = 0b1000;
@@ -859,12 +871,10 @@ test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t 
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res1 == test_complete)
+    if (res4 == test_complete) {
         LOGD("Reserved byte 0b1000 passed");
-
-    if (res1 == test_complete && res2 == test_complete && res3 == test_complete && res4 == test_complete) {
-        return test_complete;
-    } else {
-        return test_failed;
+        result |= 0b1000;
     }
+
+    return (int)test_complete_complex_bits + result;
 }
