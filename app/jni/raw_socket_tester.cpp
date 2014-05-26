@@ -119,8 +119,8 @@ int main() {
             test_error result = test_failed;    // by default
             int result_code = 0;
             if ( ipc->opcode >= ACK_ONLY && ipc->opcode <= ACK_CHECKSUM_SEQ ) {
-                u_int32_t source = 0, destination = 0;
-                u_int16_t src_port = 0, dst_port = 0;
+                uint32_t source = 0, destination = 0;
+                uint16_t src_port = 0, dst_port = 0;
                 for (int b = 0; b < 4; b++) {
                     source |= ( (buffer[2 + b]) & (char)0xFF ) << (8 * (3-b));
                     destination |= ( (buffer[2 + 4 + 2 + b]) & (char)0xFF ) << (8 * (3-b));

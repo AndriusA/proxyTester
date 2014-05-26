@@ -55,7 +55,7 @@ uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
     // if data payload length is not a multiple of 2,
     // checksum is a 2 byte value.
     int padding = datalen % 2 ? 1 : 0;
-    pseudoheader = (struct pseudohdr *) ( (u_int8_t *) tcp + TCPHDRLEN + datalen + padding );
+    pseudoheader = (struct pseudohdr *) ( (uint8_t *) tcp + TCPHDRLEN + datalen + padding );
     pseudoheader->src_addr = ip->saddr;
     pseudoheader->dst_addr = ip->daddr;
     pseudoheader->padding = 0;
@@ -595,7 +595,7 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_urg_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0xbe02;
@@ -619,7 +619,7 @@ test_error runTest_urg_only(u_int32_t source, u_int16_t src_port, u_int32_t dest
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_ack_urg(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0xbeef0003;
     uint16_t syn_urg = 0;
@@ -641,7 +641,7 @@ test_error runTest_ack_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
@@ -663,7 +663,7 @@ test_error runTest_plain_urg(u_int32_t source, u_int16_t src_port, u_int32_t des
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_ack_checksum_incorrect(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0xbeef0005;
     uint16_t syn_urg = 0;
@@ -685,7 +685,7 @@ test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_ack_checksum_incorrect_seq(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_ack_checksum_incorrect_seq(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0xbeef000D;
     uint16_t syn_urg = 0;
@@ -708,7 +708,7 @@ test_error runTest_ack_checksum_incorrect_seq(u_int32_t source, u_int16_t src_po
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_ack_checksum(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0xbeef0006;
     uint16_t syn_urg = 0;
@@ -730,7 +730,7 @@ test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_urg_urg(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0xbe07;
@@ -752,7 +752,7 @@ test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t desti
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_urg_checksum(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0xbe08;
@@ -774,7 +774,7 @@ test_error runTest_urg_checksum(u_int32_t source, u_int16_t src_port, u_int32_t 
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+test_error runTest_urg_checksum_incorrect(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0xbe09;
@@ -796,7 +796,7 @@ test_error runTest_urg_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
         send_payload, send_length, expect_payload, expect_length);
 }
 
-test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port, uint8_t reserved)
+test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
@@ -823,7 +823,7 @@ test_error runTest_reserved_syn(u_int32_t source, u_int16_t src_port, u_int32_t 
     return res;
 }
 
-test_error runTest_reserved_est(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port, uint8_t reserved)
+test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved)
 {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
