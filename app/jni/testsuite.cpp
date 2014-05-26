@@ -85,6 +85,22 @@ uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
     LOGD("Checksum NATing recalculated: %d, %04X", checksum, checksum);
     return (uint16_t) checksum;
 }
+uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp) {
+    uint32_t checksum = ntohs(tcp->check);
+    // Add back destination (own!) IP address and port number to undo what NAT modifies
+    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
+
+    checksum = csum_add(checksum, ntohs(tcp->dest));
+
+    checksum = csum_add(checksum, ntohs(tcp->seq & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((tcp->seq >> 16) & 0xFFFF));
+    checksum = csum_add(checksum, ntohs(tcp->ack_seq & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((tcp->ack_seq >> 16) & 0xFFFF));
+    
+    LOGD("Checksum NATing recalculated (Seq): %d, %04X", checksum, checksum);
+    return (uint16_t) checksum;
+}
 
 // Check if the received packet is a valid one:
 // the IP addresses and port numbers match the expected ones.
@@ -199,14 +215,15 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
     }
     if (synack_check != 0) {
         uint16_t check = undo_natting(ip, tcp);
-        if (synack_check != check) {
-            LOGE("SYNACK packet expected check %04X, got: %04X", synack_check, check);
-            return synack_error_urg;
+        uint16_t check2 = undo_natting_seq(ip, tcp);
+        if (synack_check != check && synack_check != check2) {
+            LOGE("SYNACK packet expected check %04X, got: %04X or %04X", synack_check, check, check2);
+            return synack_error_check;
         }
     }
     if (synack_res != 0 && synack_res != (tcp->res1 & 0xF) ) {
         LOGE("SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xF));
-        return synack_error_urg;
+        return synack_error_res;
     }
     
     return success;
@@ -226,6 +243,7 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->source     = src->sin_port;
     tcp->dest       = dst->sin_port;
     tcp->seq        = htonl(random() % 65535);
+    // tcp->seq        = htonl(12345);
     tcp->ack_seq    = htonl(syn_ack);
     tcp->res1       = syn_res & 0xF;           // 4 bits reserved field
     tcp->doff       = 5;                        // Data offset 5 octets (no options)
@@ -652,6 +670,29 @@ test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
     uint8_t syn_res = 0;
     uint16_t synack_urg = 0;
     uint16_t synack_check = 0xbeef;
+    uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
+    
+    char send_payload[] = "HELLO";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+}
+
+test_error runTest_ack_checksum_incorrect_seq(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port)
+{
+    uint32_t syn_ack = 0xbeef000D;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    // Different checksum to differentiate when which type of rewriting happens
+    uint16_t synack_check = 0xbeee;
     uint8_t synack_res = 0;
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;

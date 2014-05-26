@@ -53,6 +53,8 @@ enum opcode_t : uint8_t {
     URG_CHECKSUM_INCORRECT = 10,
     RESERVED_SYN = 11,
     RESERVED_EST = 12,
+    ACK_CHECKSUM_INCORRECT_SEQ = 13,
+    ACK_CHECKSUM_SEQ = 14,
     RESULT_NOT_IMPLEMENTED = 51,
 };
 
@@ -116,7 +118,7 @@ int main() {
 
             test_error result = test_failed;    // by default
             int result_code = 0;
-            if ( ipc->opcode >= ACK_ONLY && ipc->opcode <= RESERVED_EST ) {
+            if ( ipc->opcode >= ACK_ONLY && ipc->opcode <= ACK_CHECKSUM_SEQ ) {
                 u_int32_t source = 0, destination = 0;
                 u_int16_t src_port = 0, dst_port = 0;
                 for (int b = 0; b < 4; b++) {
@@ -164,6 +166,9 @@ int main() {
                         break;
                     case RESERVED_EST:
                         result = runTest_reserved_est(source, src_port, destination, dst_port, reserved);
+                        break;
+                    case ACK_CHECKSUM_INCORRECT_SEQ:
+                        result = runTest_ack_checksum_incorrect_seq(source, src_port, destination, dst_port);
                         break;
                     default:
                         result = test_not_implemented;

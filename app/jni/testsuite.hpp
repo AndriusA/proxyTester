@@ -86,6 +86,8 @@ test_error runTest_ack_checksum_incorrect(u_int32_t source, u_int16_t src_port, 
 // Same as above, but adding 16 bits of payload to make sure that the payload is correct
 // ACK set to 0xbeef0006
 test_error runTest_ack_checksum(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
+// ACK set to 0xbeef000D
+test_error runTest_ack_checksum_incorrect_seq(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
 // Using URG fields both ways, without URG flag set
 // Both should be 0xbe07
 test_error runTest_urg_urg(u_int32_t source, u_int16_t src_port, u_int32_t destination, u_int16_t dst_port);
