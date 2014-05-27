@@ -465,6 +465,11 @@ test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
     receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
     // TODO: handle the new sequence numbers
     seq_local = ntohl(tcp->ack_seq);
+    // When the ACK of a previous packet gets sent separately from the data
+    if (receiveDataLength == 0) {
+        int receiveLength = receivePacket(socket, ip, tcp, dst, src);
+        receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
+    }
     return success;
 }
 

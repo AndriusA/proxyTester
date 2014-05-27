@@ -99,8 +99,9 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     test_error ret = success;
     if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (expect_length > receiveLength || memcmp(data, expect_payload, expect_length) != 0) {
-            LOGE("Payload wrong value, expected for iplen %d, tcplen %d:", IPHDRLEN, TCPHDRLEN);
-            printBufferHex(data, expect_length);
+            LOGE("Payload wrong value, received %d data bytes:", receiveLength);
+            printBufferHex(data, receiveLength);
+            LOGE("Expected:");
             printBufferHex(expect_payload, expect_length);
             ret = test_failed;
         }
