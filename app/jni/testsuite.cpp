@@ -94,34 +94,19 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         return test_failed;
     }
 
-    memset(buffer, 0, BUFLEN);
-    buildTcpData(&src, &dst, ip, tcp, seq_local, seq_remote, data_out_res, send_payload, send_length);
+    sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
+    int receiveLength = 0;
     test_error ret = success;
-    if (sendPacket(sock, buffer, &dst, ntohs(ip->tot_len))) {
-        int receiveLength = receivePacket(sock, ip, tcp, &dst, &src);
-
+    if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (expect_length > receiveLength || memcmp(data, expect_payload, expect_length) != 0) {
             LOGE("Payload wrong value, expected for iplen %d, tcplen %d:", IPHDRLEN, TCPHDRLEN);
             printBufferHex(data, expect_length);
             printBufferHex(expect_payload, expect_length);
             ret = test_failed;
         }
-
         if (tcp->res1 != (data_in_res & 0xF)) {
             LOGE("Data packet reserved field wrong value: %02X, expected %02X", tcp->res1, data_in_res & 0xF);
             ret = test_failed;
-        }
-
-        int dataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
-        // TODO: handle the new sequence numbers
-        seq_local = ntohl(tcp->ack_seq);
-        if (dataLength > 0) {
-            seq_remote = seq_remote + dataLength;
-            buildTcpAck(&src, &dst, ip, tcp, seq_local, seq_remote);
-            sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
-            // if (ret != success) {
-            //     LOGE("TCP Data ACK failure: %s", strerror(errno));
-            // }
         }
     }
 

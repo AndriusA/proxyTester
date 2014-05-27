@@ -56,18 +56,6 @@ struct pseudohdr {
 
 uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp);
 uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp);
-int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
-    struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst);
-bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len);
-
-void buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote,
-            uint8_t reserved,
-            char data[], int datalen);
-void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote);
 
 test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
@@ -78,3 +66,13 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
 test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote);
+
+test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                uint8_t data_out_res, char *send_payload, int send_length);
+
+test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                int &receiveDataLength);

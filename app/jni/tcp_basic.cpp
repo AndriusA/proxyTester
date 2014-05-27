@@ -442,3 +442,34 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
     }
     return success;
 }
+
+test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                uint8_t data_out_res, char *send_payload, int send_length)
+{
+    memset(buffer, 0, BUFLEN);
+    buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, data_out_res, send_payload, send_length);
+    if ( sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) )
+        return success;
+    else
+        return send_error;
+}
+
+test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                int &receiveDataLength)
+{
+    int receiveLength = receivePacket(socket, ip, tcp, dst, src);
+    receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
+    // TODO: handle the new sequence numbers
+    seq_local = ntohl(tcp->ack_seq);
+    if (receiveDataLength > 0) {
+        seq_remote = seq_remote + receiveDataLength;
+        buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
+        if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len)))
+            return send_error;
+    }
+    return success;
+}
