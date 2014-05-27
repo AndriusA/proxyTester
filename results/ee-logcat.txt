@@ -1,0 +1,1124 @@
+ThinkAir:beefyControl andrius$ adb logcat | grep TCPTester
+D/Netalyzr( 1284): Starting TCPTester
+D/TCPTester( 1284): Local socket address: tcptester_socket
+D/TCPTester( 1284): localSocketServer accepts one client
+D/TCPTester( 1284): Checking interface [lo][1][/::1%1%1][/127.0.0.1]
+D/TCPTester( 1284): Interface status: truefalsetrue
+D/TCPTester( 1284): Checking interface [svnet0][2]
+D/TCPTester( 1284): Interface status: falsetruetrue
+D/TCPTester( 1284): Checking interface [ifb0][3]
+D/TCPTester( 1284): Interface status: falsefalsefalse
+D/TCPTester( 1284): Checking interface [ifb1][4]
+D/TCPTester( 1284): Interface status: falsefalsefalse
+D/TCPTester( 1284): Checking interface [sit0][5]
+D/TCPTester( 1284): Interface status: falsefalsefalse
+D/TCPTester( 1284): Checking interface [ip6tnl0][6]
+D/TCPTester( 1284): Interface status: falsefalsefalse
+D/TCPTester( 1284): Checking interface [wlan0][7]
+D/TCPTester( 1284): Interface status: falsefalsefalse
+D/TCPTester( 1284): Checking interface [pdp0][8][/10.108.56.88]
+D/TCPTester( 1284): Interface status: falsetruetrue
+D/TCPTester( 1284): Got address 10.108.56.88 (interface [pdp0][8][/10.108.56.88])
+D/TCPTester( 1284): 18 tests selected
+D/TCPTester( 1284): Running test Test ACK-only from 10.108.56.88:23775 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 23775 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+I/TCPTester-bin( 1338): Starting TCPTester service v6
+D/TCPTester-bin( 1338): Creating socket
+I/TCPTester-bin( 1338): Connecting from native to local socket
+D/TCPTester( 1284): Client connected, signaling condition
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E020A6C38585CDFC05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 02 0A 6C 38 58 5C DF C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 2
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: A9EC
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36433 	Ack: 3203334145
+D/TCPTester-bin( 1338): TCP Checksum: 186B
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:23775
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 36434
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 5C DF 00 00 30 39 00 00 8E 52 50 12 20 00 18 6B 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 36434
+D/TCPTester-bin( 1338): TCP Checksum: 3894
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36434 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 54F5
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36434 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 5C DF 1B 39 00 00 8E 52 00 00 30 3A 50 18 FF D7 54 F5 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 5972
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:23775
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 36439
+D/TCPTester-bin( 1338): 45 00 00 2C 00 01 00 00 33 06 47 08 C0 5F 3D A0 0A 6C 38 58 1B 39 5C DF 00 00 30 3A 00 00 8E 57 50 10 20 00 59 72 00 00 BE EF 00 01 
+D/TCPTester-bin( 1338): TCP Checksum: 388B
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36439 	Ack: 12350
+D/TCPTester-bin( 1338): TCP Checksum: 388A
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36439 	Ack: 12350
+D/TCPTester-bin( 1338): TCP Checksum: 1861
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:23775
+D/TCPTester-bin( 1338): 	Seq: 12350 	Ack: 36440
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 5C DF 00 00 30 3E 00 00 8E 58 50 11 20 00 18 61 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: DA6F
+D/TCPTester-bin( 1338): 10.108.56.88:23775 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 36439 	Ack: 36441
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 23775 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test URG-only from 10.108.56.88:4477 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 4477 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E030A6C3858117DC05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 03 0A 6C 38 58 11 7D C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 3
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 12AE
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29152 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 803E
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4477
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 29153
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 11 7D 00 00 30 39 00 00 71 E1 50 12 20 00 80 3E 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 29153
+D/TCPTester-bin( 1338): TCP Checksum: A067
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29153 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: BCC8
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29153 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 11 7D 1B 39 00 00 71 E1 00 00 30 3A 50 18 FF D7 BC C8 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: C235
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4477
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 29158
+D/TCPTester-bin( 1338): 45 00 00 2A 00 01 00 00 33 06 47 0A C0 5F 3D A0 0A 6C 38 58 1B 39 11 7D 00 00 30 3A 00 00 71 E6 50 10 20 00 C2 35 00 00 BE 02 
+D/TCPTester-bin( 1338): TCP Checksum: A060
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29158 	Ack: 12348
+D/TCPTester-bin( 1338): TCP Checksum: A05F
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29158 	Ack: 12348
+D/TCPTester-bin( 1338): TCP Checksum: 8036
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4477
+D/TCPTester-bin( 1338): 	Seq: 12348 	Ack: 29159
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 11 7D 00 00 30 3C 00 00 71 E7 50 11 20 00 80 36 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 5EB4
+D/TCPTester-bin( 1338): 10.108.56.88:4477 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 29158 	Ack: 29160
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 4477 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test ACK-URG from 10.108.56.88:37932 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 37932 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E040A6C3858942CC05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 04 0A 6C 38 58 94 2C C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 4
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: B5B1
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19261 	Ack: 3203334147
+D/TCPTester-bin( 1338): TCP Checksum: 662E
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:37932
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 19262
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 94 2C 00 00 30 39 00 00 4B 3E 50 12 20 00 66 2E BE 03 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 19262
+D/TCPTester-bin( 1338): TCP Checksum: 445B
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19262 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 60BC
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19262 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 94 2C 1B 39 00 00 4B 3E 00 00 30 3A 50 18 FF D7 60 BC 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 4097
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:37932
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 19267
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 94 2C 00 00 30 3A 00 00 4B 43 50 10 20 00 40 97 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 4451
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19267 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 4450
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19267 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 2427
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:37932
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 19268
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 94 2C 00 00 30 3F 00 00 4B 44 50 11 20 00 24 27 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 294B
+D/TCPTester-bin( 1338): 10.108.56.88:37932 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 19267 	Ack: 19269
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 37932 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test plain-URG from 10.108.56.88:21707 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 21707 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E050A6C385854CBC05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 05 0A 6C 38 58 54 CB C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 5
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 20BA
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56968 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 1243
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:21707
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 56969
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 54 CB 00 00 30 39 00 00 DE 89 50 12 20 00 12 43 BE 04 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 56969
+D/TCPTester-bin( 1338): TCP Checksum: F070
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56969 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 0CD2
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56969 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 54 CB 1B 39 00 00 DE 89 00 00 30 3A 50 18 FF D7 0C D2 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: ECAC
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:21707
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 56974
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 54 CB 00 00 30 3A 00 00 DE 8E 50 10 20 00 EC AC 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: F066
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56974 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: F065
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56974 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: D03C
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:21707
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 56975
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 54 CB 00 00 30 3F 00 00 DE 8F 50 11 20 00 D0 3C 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 4215
+D/TCPTester-bin( 1338): 10.108.56.88:21707 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 56974 	Ack: 56976
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 21707 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test ACK-checksum-incorrect from 10.108.56.88:22472 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 22472 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E060A6C385857C8C05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 06 0A 6C 38 58 57 C8 C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 6
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 27C9
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5512 	Ack: 3203334149
+D/TCPTester-bin( 1338): TCP Checksum: 2463
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:22472
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 5513
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 57 C8 00 00 30 39 00 00 15 89 50 12 20 00 24 63 00 00 
+D/TCPTester-bin( 1338): Checksum NATing recalculated: 48879, BEEF
+D/TCPTester-bin( 1338): Checksum NATing recalculated (Seq): 1202, 04B2
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 5513
+D/TCPTester-bin( 1338): TCP Checksum: B674
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5513 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: D2D5
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5513 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 57 C8 1B 39 00 00 15 89 00 00 30 3A 50 18 FF D7 D2 D5 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: B2B0
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:22472
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 5518
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 57 C8 00 00 30 3A 00 00 15 8E 50 10 20 00 B2 B0 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: B66A
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5518 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: B669
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5518 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 9640
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:22472
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 5519
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 57 C8 00 00 30 3F 00 00 15 8F 50 11 20 00 96 40 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: D119
+D/TCPTester-bin( 1338): 10.108.56.88:22472 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 5518 	Ack: 5520
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 22472 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test ACK-checksum from 10.108.56.88:7703 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 7703 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E070A6C38581E17C05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 07 0A 6C 38 58 1E 17 C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 7
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 88E5
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60955 	Ack: 3203334150
+D/TCPTester-bin( 1338): TCP Checksum: 5E14
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:7703
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 60956
+D/TCPTester-bin( 1338): 45 00 00 2A 00 01 00 00 33 06 47 0A C0 5F 3D A0 0A 6C 38 58 1B 39 1E 17 00 00 30 39 00 00 EE 1C 50 12 20 00 5E 14 00 00 99 52 
+D/TCPTester-bin( 1338): Checksum NATing recalculated: 48879, BEEF
+D/TCPTester-bin( 1338): Checksum NATing recalculated (Seq): 56645, DD45
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 60956
+D/TCPTester-bin( 1338): TCP Checksum: 1792
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60956 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 33F3
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60956 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 1E 17 1B 39 00 00 EE 1C 00 00 30 3A 50 18 FF D7 33 F3 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 13CE
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:7703
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 60961
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 1E 17 00 00 30 3A 00 00 EE 21 50 10 20 00 13 CE 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 1788
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60961 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 1787
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60961 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: F75D
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:7703
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 60962
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 1E 17 00 00 30 3F 00 00 EE 22 50 11 20 00 F7 5D 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 59A3
+D/TCPTester-bin( 1338): 10.108.56.88:7703 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 60961 	Ack: 60963
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 7703 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test URG-URG from 10.108.56.88:4364 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 4364 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E080A6C3858110CC05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 08 0A 6C 38 58 11 0C C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 8
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: E491
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41064 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 941F
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4364
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 41065
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 11 0C 00 00 30 39 00 00 A0 69 50 12 20 00 94 1F BE 07 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 41065
+D/TCPTester-bin( 1338): TCP Checksum: 7250
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41065 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 8EB1
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41065 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 11 0C 1B 39 00 00 A0 69 00 00 30 3A 50 18 FF D7 8E B1 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 6E8C
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4364
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 41070
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 11 0C 00 00 30 3A 00 00 A0 6E 50 10 20 00 6E 8C 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 7246
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41070 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 7245
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41070 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 521C
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:4364
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 41071
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 11 0C 00 00 30 3F 00 00 A0 6F 50 11 20 00 52 1C 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 0215
+D/TCPTester-bin( 1338): 10.108.56.88:4364 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 41070 	Ack: 41072
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 4364 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test URG-checksum from 10.108.56.88:7347 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 7347 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E090A6C38581CB3C05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 09 0A 6C 38 58 1C B3 C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 9
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: B6A9
+D/TCPTester-bin( 1338): 10.108.56.88:7347 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 49832 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 663B
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:7347
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 49833
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 1C B3 00 00 30 39 00 00 C2 A9 50 12 20 00 66 3B BE 04 
+D/TCPTester-bin( 1338): Checksum NATing recalculated: 50610, C5B2
+D/TCPTester-bin( 1338): Checksum NATing recalculated (Seq): 47253, B895
+E/TCPTester-bin( 1338): SYNACK packet expected check BEEF, got: C5B2 or B895
+E/TCPTester-bin( 1338): TCP SYNACK packet failure: 4, Success
+E/TCPTester-bin( 1338): TCP handshake failed: Success
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 1
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0201
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test failed
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 7347 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test URG-checksum-incorrect from 10.108.56.88:45921 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 45921 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E0A0A6C3858B361C05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 0A 0A 6C 38 58 B3 61 C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 10
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 9D4D
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17749 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: C8C9
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:45921
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 17750
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 B3 61 00 00 30 39 00 00 45 56 50 12 20 00 C8 C9 00 00 
+D/TCPTester-bin( 1338): Checksum NATing recalculated: 48879, BEEF
+D/TCPTester-bin( 1338): Checksum NATing recalculated (Seq): 13439, 347F
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 17750
+D/TCPTester-bin( 1338): TCP Checksum: 2B0E
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17750 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 476F
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17750 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 B3 61 1B 39 00 00 45 56 00 00 30 3A 50 18 FF D7 47 6F 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 274A
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:45921
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 17755
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 B3 61 00 00 30 3A 00 00 45 5B 50 10 20 00 27 4A 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 2B04
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17755 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 2B03
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17755 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 0ADA
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:45921
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 17756
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 B3 61 00 00 30 3F 00 00 45 5C 50 11 20 00 0A DA 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 15E6
+D/TCPTester-bin( 1338): 10.108.56.88:45921 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 17755 	Ack: 17757
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 45921 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-syn from 10.108.56.88:59180 to 192.95.61.160:6969 failed 1
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 59180 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0B0A6C3858E72CC05F3DA01B3901
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0B 0A 6C 38 58 E7 2C C0 5F 3D A0 1B 39 01 
+D/TCPTester-bin( 1338): Selecting test for opcode 11
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: A0B5
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52011 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 5043
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59180
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 52012
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 E7 2C 00 00 30 39 00 00 CB 2C 51 12 20 00 50 43 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 52012
+D/TCPTester-bin( 1338): TCP Checksum: 706C
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52012 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 8DCD
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52012 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 E7 2C 1B 39 00 00 CB 2C 00 00 30 3A 50 18 FF D7 8D CD 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 6DA8
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59180
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 52017
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 E7 2C 00 00 30 3A 00 00 CB 31 50 10 20 00 6D A8 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 7162
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52017 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 7161
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52017 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 5138
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59180
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 52018
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 E7 2C 00 00 30 3F 00 00 CB 32 50 11 20 00 51 38 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: D66D
+D/TCPTester-bin( 1338): 10.108.56.88:59180 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 52017 	Ack: 52019
+D/TCPTester-bin( 1338): Reserved byte 01 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 59180 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-syn from 10.108.56.88:36157 to 192.95.61.160:6969 failed 10
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 36157 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0B0A6C38588D3DC05F3DA01B3902
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0B 0A 6C 38 58 8D 3D C0 5F 3D A0 1B 39 02 
+D/TCPTester-bin( 1338): Selecting test for opcode 11
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 978D
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11587 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 471B
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:36157
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 11588
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 8D 3D 00 00 30 39 00 00 2D 44 52 12 20 00 47 1B 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 11588
+D/TCPTester-bin( 1338): TCP Checksum: 6744
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11588 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 85A5
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11588 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 8D 3D 1B 39 00 00 2D 44 00 00 30 3A 50 18 FF D7 85 A5 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 6580
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:36157
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 11593
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 8D 3D 00 00 30 3A 00 00 2D 49 50 10 20 00 65 80 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 693A
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11593 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 6939
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11593 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 4910
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:36157
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 11594
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 8D 3D 00 00 30 3F 00 00 2D 4A 50 11 20 00 49 10 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 6C2E
+D/TCPTester-bin( 1338): 10.108.56.88:36157 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11593 	Ack: 11595
+D/TCPTester-bin( 1338): Reserved byte 02 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 36157 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-syn from 10.108.56.88:5717 to 192.95.61.160:6969 failed 100
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 5717 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0B0A6C38581655C05F3DA01B3904
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0B 0A 6C 38 58 16 55 C0 5F 3D A0 1B 39 04 
+D/TCPTester-bin( 1338): Selecting test for opcode 11
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 81D6
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47074 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 3164
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:5717
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 47075
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 16 55 00 00 30 39 00 00 B7 E3 54 12 20 00 31 64 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 47075
+D/TCPTester-bin( 1338): TCP Checksum: 518D
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47075 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 71EE
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47075 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 16 55 1B 39 00 00 B7 E3 00 00 30 3A 50 18 FF D7 71 EE 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 51C9
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:5717
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 47080
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 16 55 00 00 30 3A 00 00 B7 E8 50 10 20 00 51 C9 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 5583
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47080 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 5582
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47080 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 3559
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:5717
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 47081
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 16 55 00 00 30 3F 00 00 B7 E9 50 11 20 00 35 59 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: CDD7
+D/TCPTester-bin( 1338): 10.108.56.88:5717 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47080 	Ack: 47082
+D/TCPTester-bin( 1338): Reserved byte 04 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 5717 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-syn from 10.108.56.88:65327 to 192.95.61.160:6969 failed 1000
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 65327 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0B0A6C3858FF2FC05F3DA01B3908
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0B 0A 6C 38 58 FF 2F C0 5F 3D A0 1B 39 08 
+D/TCPTester-bin( 1338): Selecting test for opcode 11
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 6CA7
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57398 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 1C35
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:65327
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 57399
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 FF 2F 00 00 30 39 00 00 E0 37 58 12 20 00 1C 35 00 00 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 57399
+D/TCPTester-bin( 1338): TCP Checksum: 3C5E
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57399 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 60BF
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57399 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 FF 2F 1B 39 00 00 E0 37 00 00 30 3A 50 18 FF D7 60 BF 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 409A
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:65327
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 57404
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 FF 2F 00 00 30 3A 00 00 E0 3C 50 10 20 00 40 9A 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 4454
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57404 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 4453
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57404 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 242A
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:65327
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 57405
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 FF 2F 00 00 30 3F 00 00 E0 3D 50 11 20 00 24 2A 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 9454
+D/TCPTester-bin( 1338): 10.108.56.88:65327 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 57404 	Ack: 57406
+D/TCPTester-bin( 1338): Reserved byte 08 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 65327 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-est from 10.108.56.88:27614 to 192.95.61.160:6969 failed 1
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 27614 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0C0A6C38586BDEC05F3DA01B3901
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0C 0A 6C 38 58 6B DE C0 5F 3D A0 1B 39 01 
+D/TCPTester-bin( 1338): Selecting test for opcode 12
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: C062
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10189 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: B1EB
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:27614
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 10190
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 6B DE 00 00 30 39 00 00 27 CE 50 12 20 00 B1 EB BE 04 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 10190
+D/TCPTester-bin( 1338): TCP Checksum: 9019
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10190 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: AB7A
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10190 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 6B DE 1B 39 00 00 27 CE 00 00 30 3A 51 18 FF D7 AB 7A 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 8B55
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:27614
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 10195
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 6B DE 00 00 30 3A 00 00 27 D3 51 10 20 00 8B 55 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 8F0F
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10195 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 8F0E
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10195 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 6FE5
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:27614
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 10196
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 6B DE 00 00 30 3F 00 00 27 D4 50 11 20 00 6F E5 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 9879
+D/TCPTester-bin( 1338): 10.108.56.88:27614 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 10195 	Ack: 10197
+D/TCPTester-bin( 1338): Reserved byte 01 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 27614 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-est from 10.108.56.88:19199 to 192.95.61.160:6969 failed 10
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 19199 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0C0A6C38584AFFC05F3DA01B3902
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0C 0A 6C 38 58 4A FF C0 5F 3D A0 1B 39 02 
+D/TCPTester-bin( 1338): Selecting test for opcode 12
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 8038
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35030 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 71C1
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:19199
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 35031
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 4A FF 00 00 30 39 00 00 88 D7 50 12 20 00 71 C1 BE 04 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 35031
+D/TCPTester-bin( 1338): TCP Checksum: 4FEF
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35031 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 6A50
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35031 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 4A FF 1B 39 00 00 88 D7 00 00 30 3A 52 18 FF D7 6A 50 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 4A2B
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:19199
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 35036
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 4A FF 00 00 30 3A 00 00 88 DC 52 10 20 00 4A 2B 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 4DE5
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35036 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 4DE4
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35036 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 2FBB
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:19199
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 35037
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 4A FF 00 00 30 3F 00 00 88 DD 50 11 20 00 2F BB 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: F745
+D/TCPTester-bin( 1338): 10.108.56.88:19199 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 35036 	Ack: 35038
+D/TCPTester-bin( 1338): Reserved byte 02 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 19199 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-est from 10.108.56.88:11317 to 192.95.61.160:6969 failed 100
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 11317 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0C0A6C38582C35C05F3DA01B3904
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0C 0A 6C 38 58 2C 35 C0 5F 3D A0 1B 39 04 
+D/TCPTester-bin( 1338): Selecting test for opcode 12
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 6CB1
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47911 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 5E3A
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:11317
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 47912
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 2C 35 00 00 30 39 00 00 BB 28 50 12 20 00 5E 3A BE 04 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 47912
+D/TCPTester-bin( 1338): TCP Checksum: 3C68
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47912 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 54C9
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47912 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 2C 35 1B 39 00 00 BB 28 00 00 30 3A 54 18 FF D7 54 C9 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 34A4
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:11317
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 47917
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 2C 35 00 00 30 3A 00 00 BB 2D 54 10 20 00 34 A4 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 385E
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47917 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 385D
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47917 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 1C34
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:11317
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 47918
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 2C 35 00 00 30 3F 00 00 BB 2E 50 11 20 00 1C 34 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: B16D
+D/TCPTester-bin( 1338): 10.108.56.88:11317 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 47917 	Ack: 47919
+D/TCPTester-bin( 1338): Reserved byte 04 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 11317 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test Reserved-est from 10.108.56.88:59194 to 192.95.61.160:6969 failed 1000
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 59194 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0F0C0A6C3858E73AC05F3DA01B3908
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 15 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0F 0C 0A 6C 38 58 E7 3A C0 5F 3D A0 1B 39 08 
+D/TCPTester-bin( 1338): Selecting test for opcode 12
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: 86B6
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58908 	Ack: 0
+D/TCPTester-bin( 1338): TCP Checksum: 783F
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59194
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 58909
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 E7 3A 00 00 30 39 00 00 E6 1D 50 12 20 00 78 3F BE 04 
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 58909
+D/TCPTester-bin( 1338): TCP Checksum: 566D
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58909 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 6ACE
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58909 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 E7 3A 1B 39 00 00 E6 1D 00 00 30 3A 58 18 FF D7 6A CE 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 4AA9
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59194
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 58914
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 E7 3A 00 00 30 3A 00 00 E6 22 58 10 20 00 4A A9 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 4E63
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58914 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 4E62
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58914 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 3639
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:59194
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 58915
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 E7 3A 00 00 30 3F 00 00 E6 23 50 11 20 00 36 39 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: A07D
+D/TCPTester-bin( 1338): 10.108.56.88:59194 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 58914 	Ack: 58916
+D/TCPTester-bin( 1338): Reserved byte 08 passed
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 59194 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Running test Test ACK-checksum-incorrect-seq from 10.108.56.88:48758 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Iptables command to execute: iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport 48758 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule enabled
+D/TCPTester( 1284): Sending message 0E0D0A6C3858BE76C05F3DA01B39
+D/TCPTester( 1284): Client connected, writing the message to socket
+I/TCPTester-bin( 1338): Received 14 bytes
+D/TCPTester-bin( 1338): Payload: 
+D/TCPTester-bin( 1338): 0E 0D 0A 6C 38 58 BE 76 C0 5F 3D A0 1B 39 
+D/TCPTester-bin( 1338): Selecting test for opcode 13
+D/TCPTester-bin( 1338): socket() ok
+D/TCPTester-bin( 1338): setsockopt() ok
+D/TCPTester-bin( 1338): TCP Checksum: AA59
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11329 	Ack: 3203334157
+D/TCPTester-bin( 1338): TCP Checksum: 6138
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:48758
+D/TCPTester-bin( 1338): 	Seq: 12345 	Ack: 11330
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 BE 76 00 00 30 39 00 00 2C 42 50 12 20 00 61 38 00 00 
+D/TCPTester-bin( 1338): Checksum NATing recalculated: 25203, 6273
+D/TCPTester-bin( 1338): Checksum NATing recalculated (Seq): 48878, BEEE
+D/TCPTester-bin( 1338): SYNACK 	Seq: 12345 	Ack: 11330
+D/TCPTester-bin( 1338): TCP Checksum: 390D
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11330 	Ack: 12346
+D/TCPTester-bin( 1338): TCP Checksum: 556E
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11330 	Ack: 12346
+D/TCPTester-bin( 1338): 45 00 00 2D 00 00 00 00 28 06 00 00 0A 6C 38 58 C0 5F 3D A0 BE 76 1B 39 00 00 2C 42 00 00 30 3A 50 18 FF D7 55 6E 00 00 48 45 4C 4C 4F 
+D/TCPTester-bin( 1338): TCP Checksum: 3549
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:48758
+D/TCPTester-bin( 1338): 	Seq: 12346 	Ack: 11335
+D/TCPTester-bin( 1338): 45 00 00 2D 00 01 00 00 33 06 47 07 C0 5F 3D A0 0A 6C 38 58 1B 39 BE 76 00 00 30 3A 00 00 2C 47 50 10 20 00 35 49 00 00 4F 4C 4C 45 48 
+D/TCPTester-bin( 1338): TCP Checksum: 3903
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11335 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 3902
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11335 	Ack: 12351
+D/TCPTester-bin( 1338): TCP Checksum: 18D9
+D/TCPTester-bin( 1338): 192.95.61.160:6969 --> 
+D/TCPTester-bin( 1338): 		 10.108.56.88:48758
+D/TCPTester-bin( 1338): 	Seq: 12351 	Ack: 11336
+D/TCPTester-bin( 1338): 45 00 00 28 00 01 00 00 33 06 47 0C C0 5F 3D A0 0A 6C 38 58 1B 39 BE 76 00 00 30 3F 00 00 2C 48 50 11 20 00 18 D9 00 00 
+D/TCPTester-bin( 1338): TCP Checksum: 3CF9
+D/TCPTester-bin( 1338): 10.108.56.88:48758 --> 
+D/TCPTester-bin( 1338): 		 192.95.61.160:6969
+D/TCPTester-bin( 1338): 	Seq: 11335 	Ack: 11337
+D/TCPTester-bin( 1338): Sending message to the socket, opcode 0
+D/TCPTester-bin( 1338): Test complete
+I/TCPTester-bin( 1338): Receiving from socket, offset 0
+D/TCPTester( 1284): Receive data from socket, bytesRead = 2, 0200
+D/TCPTester( 1284): Full command received
+D/TCPTester( 1284): Test successful
+D/TCPTester( 1284): Iptables command to execute: iptables -D OUTPUT -p tcp --tcp-flags RST RST --sport 48758 --dport 6969 -d 192.95.61.160 -j DROP && iptables --list
+D/TCPTester( 1284): iptables rule disabled
+D/TCPTester( 1284): Finish SocketTesterServer comms thread
+I/TCPTester-bin( 1338): Received 0 bytes
+D/TCPTester-bin( 1338): End of File
+D/TCPTester( 1284): Finished
+D/TCPTester( 1284): Finish SocketTesterServer comms thread
+D/TCPTester( 1284): Finished
+D/TCPTester( 1284): The LocalSocketServer thread stopping
+D/TCPTester( 1284): 18 results
+D/TCPTester( 1284): Network info: NetworkInfo: type: mobile[HSDPA], state: CONNECTED/CONNECTED, reason: connected, extra: everywhere, roaming: false, failover: false, isAvailable: true, isConnectedToProvisioningNetwork: false
+D/TCPTester( 1284): Test ACK-only from 10.108.56.88:23775 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test URG-only from 10.108.56.88:4477 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test ACK-URG from 10.108.56.88:37932 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test plain-URG from 10.108.56.88:21707 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test ACK-checksum-incorrect from 10.108.56.88:22472 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test ACK-checksum from 10.108.56.88:7703 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test URG-URG from 10.108.56.88:4364 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test URG-checksum from 10.108.56.88:7347 to 192.95.61.160:6969 failed
+D/TCPTester( 1284): Test URG-checksum-incorrect from 10.108.56.88:45921 to 192.95.61.160:6969 passed
+D/TCPTester( 1284): Test Reserved-syn from 10.108.56.88:59180 to 192.95.61.160:6969 passed 1
+D/TCPTester( 1284): Test Reserved-syn from 10.108.56.88:36157 to 192.95.61.160:6969 passed 10
+D/TCPTester( 1284): Test Reserved-syn from 10.108.56.88:5717 to 192.95.61.160:6969 passed 100
+D/TCPTester( 1284): Test Reserved-syn from 10.108.56.88:65327 to 192.95.61.160:6969 passed 1000
+D/TCPTester( 1284): Test Reserved-est from 10.108.56.88:27614 to 192.95.61.160:6969 passed 1
+D/TCPTester( 1284): Test Reserved-est from 10.108.56.88:19199 to 192.95.61.160:6969 passed 10
+D/TCPTester( 1284): Test Reserved-est from 10.108.56.88:11317 to 192.95.61.160:6969 passed 100
+D/TCPTester( 1284): Test Reserved-est from 10.108.56.88:59194 to 192.95.61.160:6969 passed 1000
+D/TCPTester( 1284): Test ACK-checksum-incorrect-seq from 10.108.56.88:48758 to 192.95.61.160:6969 passed
+
