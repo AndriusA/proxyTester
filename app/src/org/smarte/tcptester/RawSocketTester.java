@@ -89,7 +89,7 @@ public class RawSocketTester extends Test
         }
         ConnectivityManager connMgr = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        if ( !networkInfo.isConnected() ) {
+        if ( networkInfo == null || !networkInfo.isConnected() ) {
             Log.d(TAG, "Fatal: Device is currently offline");
             return Test.TEST_ERROR | Test.TEST_ERROR_UNAVAIL;
         }
@@ -130,6 +130,7 @@ public class RawSocketTester extends Test
         }
         
         Log.d(TAG, Integer.toString(mResults.size()) + " results");
+        Log.d(TAG, "Network info: " + networkInfo.toString());
         Log.d(TAG, this.getPostResults());
         return Test.TEST_COMPLEX; 
     }
@@ -144,23 +145,23 @@ public class RawSocketTester extends Test
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
-        // basicTests.add(new TCPTest("ACK-only", 2));
-        // basicTests.add(new TCPTest("URG-only", 3));
-        // basicTests.add(new TCPTest("ACK-URG", 4));
-        // basicTests.add(new TCPTest("plain-URG", 5));
+        basicTests.add(new TCPTest("ACK-only", 2));
+        basicTests.add(new TCPTest("URG-only", 3));
+        basicTests.add(new TCPTest("ACK-URG", 4));
+        basicTests.add(new TCPTest("plain-URG", 5));
         basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
         basicTests.add(new TCPTest("ACK-checksum", 7));
-        // basicTests.add(new TCPTest("URG-URG", 8));
-        // basicTests.add(new TCPTest("URG-checksum", 9));
-        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        basicTests.add(new TCPTest("URG-URG", 8));
+        basicTests.add(new TCPTest("URG-checksum", 9));
+        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        basicTests.add(new TCPTest("Reserved-est", 12, 8));
         basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
@@ -176,16 +177,20 @@ public class RawSocketTester extends Test
                 }
             }
         }
+        Log.d(TAG, Integer.toString(completeTests.size()) + " tests selected");
         return completeTests;
     }
 
-    private static List<InetAddress> getOwnInetAddresses() {
+    private List<InetAddress> getOwnInetAddresses() {
         List<InetAddress> ipAddresses = new ArrayList<InetAddress>();
         try {
             Enumeration<NetworkInterface> en;
             for ( en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
                 NetworkInterface intf = en.nextElement();
-                if (!intf.isLoopback() && !intf.isPointToPoint() && intf.isUp() ) {
+                Log.d(TAG, "Checking interface " + intf.toString());
+                Log.d(TAG, "Interface status: " + intf.isLoopback() + intf.isPointToPoint() + intf.isUp());
+                // BUGFIX: removed && !intf.isPointToPoint() - broken on CyanogenMod 10.2 for cellular interface
+                if (!intf.isLoopback() && intf.isUp() ) {
                     for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
                         InetAddress inetAddress = enumIpAddr.nextElement();
                         if (!inetAddress.isLinkLocalAddress()) {
@@ -197,9 +202,9 @@ public class RawSocketTester extends Test
             }
         } catch (SocketException e) {
             Log.w(TAG, "Exception while retrieving own IP address", e);
-        } finally {
-            return ipAddresses;
         }
+
+        return ipAddresses;
     }
 
     private boolean installNativeBinary(Context context) {

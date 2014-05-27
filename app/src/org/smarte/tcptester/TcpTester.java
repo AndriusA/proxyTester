@@ -31,7 +31,9 @@ public class TcpTester extends Activity implements View.OnClickListener
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.form);
-        findViewById(R.id.connect).setOnClickListener(this);
+        int buttonId = R.id.connect;
+        View listener = findViewById(buttonId);
+        listener.setOnClickListener(this);
     }
 
     @Override

@@ -465,11 +465,16 @@ test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
     receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
     // TODO: handle the new sequence numbers
     seq_local = ntohl(tcp->ack_seq);
-    if (receiveDataLength > 0) {
-        seq_remote = seq_remote + receiveDataLength;
-        buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
-        if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len)))
-            return send_error;
-    }
     return success;
+}
+
+test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote, int receiveDataLength)
+{
+    
+    seq_remote = seq_remote + receiveDataLength;
+    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
+    if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len)))
+        return send_error;
 }

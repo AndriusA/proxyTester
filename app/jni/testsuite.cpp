@@ -108,6 +108,10 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
             LOGE("Data packet reserved field wrong value: %02X, expected %02X", tcp->res1, data_in_res & 0xF);
             ret = test_failed;
         }
+
+        if (receiveLength > 0) {
+            acknowledgeData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength);
+        }
     }
 
     shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
