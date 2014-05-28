@@ -40,31 +40,39 @@ def process_packet(pkt_in):
 
   connID = dst + str(dport)
   connStatus = connectionInfo.get(connID, TCPCState.CLOSED)
+  if (connStatus != TCPCState.CLOSED):
+    print "<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport)
+    hexdump(pkt_in)
 
   if (pkt_in[TCP].flags == 0x02):
-    print "SYN"
-    if (connStatus == TCPCState.CLOSED):
-    	print "Connection already exists"
+    if (connStatus != TCPCState.CLOSED):
+    	print "\tConnection already exists!"
     connectionInfo[connID] = TCPCState.SYN_RECEIVED
-
     pak = None
 
     if (pkt_in[TCP].ack == 0xbeef0001):
+      print "\n\n--- TESTCASE 0xbeef0001 ---" 
       connectionTest[connID] = 1
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].urgptr == 0xbe02):
+      print "\n\n--- TESTCASE 0xbe02 ---"
       connectionTest[connID] = 2
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].ack == 0xbeef0003):
+      print "\n\n--- TESTCASE 0xbeef0003 ---"
       connectionTest[connID] = 3
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe03)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].ack == 0xbeef0005 or pkt_in[TCP].urgptr == 0xbe09):
+      if (pkt_in[TCP].ack == 0xbeef0005):
+        print "\n\n--- TESTCASE 0xbeef0005 ---"
+      elif (pkt_in[TCP].urgptr == 0xbe09):
+        print "\n\n--- TESTCASE 0xbe09 ---"
       connectionTest[connID] = 9
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
@@ -77,6 +85,7 @@ def process_packet(pkt_in):
       pak[TCP].chksum = checksum
 
     elif (pkt_in[TCP].ack == 0xbeef000D):
+      print "\n\n--- TESTCASE 0xbeef000D ---"
       connectionTest[connID] = 8
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
@@ -92,7 +101,11 @@ def process_packet(pkt_in):
       pak[TCP].chksum = checksum
 
 
-    elif (pkt_in[TCP].ack == 0xbeef0006 or pkt_in[TCP].urgptr == 0xbe05):
+    elif (pkt_in[TCP].ack == 0xbeef0006 or pkt_in[TCP].urgptr == 0xbe08):
+      if (pkt_in[TCP].ack == 0xbeef0006):
+        print "\n\n--- TESTCASE 0xbeef0006 ---"
+      elif (pkt_in[TCP].urgptr == 0xbe08):
+        print "\n\n--- TESTCASE 0xbe05 ---"
       connectionTest[connID] = 6
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
@@ -109,28 +122,39 @@ def process_packet(pkt_in):
       print "SYNACK with checksum " + hex(checksum) + " and payload for validity"
 
     elif (pkt_in[TCP].urgptr == 0xbe07):
+      print "\n\n--- TESTCASE 0xbe07 ---"
       connectionTest[connID] = 7
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe07)
       pak=ip/SYNACK
 
     elif(pkt_in[TCP].reserved > 0):
+      print "\n\n--- TESTCASE SYN RESERVED ---"
       print "SYN packet with reserved " + str(pkt_in[TCP].reserved)
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, reserved=pkt_in[TCP].reserved)
       pak=ip/SYNACK
 
     else:
+      print "\n\n--- TESTCASE 0xbe04 ---"
       print "Default SYNACK, for packet with ACK = " + hex(pkt_in[TCP].ack)
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe04)
       pak=ip/SYNACK
-      
+    
+    print "\t(SYN packet)"
+    print "<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport)
+    hexdump(pkt_in)
+    print "----> Response"  
+    hexdump(pak)
     return pak
 
   elif (pkt_in[TCP].flags & 0x01):
     print "Closing, FIN"
+    print "----------------"
     # Remove connection from the dictionary
     connectionInfo[connID] = TCPCState.LAST_ACK
     FINACK=TCP(sport=sport, dport=dport, flags="FA", seq=pkt_in[TCP].ack, ack=pkt_in[TCP].seq + 1)
     pak=ip/FINACK
+    print "----> Response"  
+    hexdump(pak)
     return pak
 
   elif (pkt_in[TCP].flags == 0x10 and not Raw in pkt_in):
@@ -140,6 +164,7 @@ def process_packet(pkt_in):
     	connectionInfo[connID] = TCPCState.ESTABLISHED
     elif (connStatus == TCPCState.LAST_ACK):
       print "Last ACK, connection closed"
+      print "----------------"
       del connectionInfo[connID]
     return None
 
@@ -159,6 +184,8 @@ def process_packet(pkt_in):
     else:
       payload = "OLLEH"
     pak=ip/ACK/payload
+    print "----> Response"  
+    hexdump(pak)
     return pak
 
 class TCPCState:
@@ -174,7 +201,7 @@ class PacketProcessor(threading.Thread):
 
   def run(self):
     while 1:
-      print "Waiting for packet"
+      # print "Waiting for packet"
       packet = self.__queue.get()
       reply = process_packet(packet)
       if reply is not None:
@@ -187,7 +214,7 @@ class PacketSender(threading.Thread):
 
   def run(self):
     while 1:
-      print "Getting packet to send"
+      # print "Getting packet to send"
       packet = self.__queue.get()
       send(packet)
 
@@ -201,4 +228,4 @@ processor.start()
 sender.daemon = True
 sender.start()
 
-sniff(prn=receive_queue.put, filter="tcp and dst port 6969", store=0)
+sniff(prn=receive_queue.put, filter="tcp and dst 192.95.61.161 and (dst port 6969 or dst port 80 or dst port 443 or dst port 8080 or dst port 8000)", store=0)

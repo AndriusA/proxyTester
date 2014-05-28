@@ -28,6 +28,7 @@ import java.util.Random;
 import java.net.SocketException;
 import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.os.SystemClock;
 import java.util.List;
 import android.net.NetworkInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -66,12 +67,12 @@ public class RawSocketTester extends Test
     public void init() {
         // Only take the first one
         try {
-            mServerAddress = InetAddress.getAllByName("192.95.61.160")[0];
+            mServerAddress = InetAddress.getAllByName("192.95.61.161")[0];
         } catch (UnknownHostException e) {
             mServerAddress = null;
         }
         // TODO: also add other common ones: 80 8000 8080
-        mServerPorts = new int[]{6969};
+        mServerPorts = new int[]{6969, 80, 8080, 8000, 443};
     }    
 
     public int runImpl() throws IOException {
@@ -114,8 +115,8 @@ public class RawSocketTester extends Test
             } catch (Exception e) {
                 Log.e(TAG, "Exception while setting iptables rule or running test", e);
             } finally {
-                // boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
-                // if (iptablesAdded && !allowed)
+                boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
+                if (iptablesAdded && !allowed)
                     Log.e(TAG, "IPTables rule added but not removed!");
             }
         } 
@@ -129,9 +130,10 @@ public class RawSocketTester extends Test
             Log.e(TAG, "LocalServerSocket thread interrupted", e);
         }
         
-        Log.d(TAG, Integer.toString(mResults.size()) + " results");
-        Log.d(TAG, "Network info: " + networkInfo.toString());
-        Log.d(TAG, this.getPostResults());
+        Log.i(TAG, Integer.toString(mResults.size()) + " results");
+        Log.i(TAG, "Network info: " + networkInfo.toString());
+        this.getPostResults();
+        Log.i(TAG, "Test complete");
         return Test.TEST_COMPLEX; 
     }
 
@@ -140,29 +142,38 @@ public class RawSocketTester extends Test
         for (TCPTest result : mResults) {
             ret += result.toString();
         }
+        for (int dstPort : mServerPorts) {
+            String resPort = "";
+            for (TCPTest result : mResults) {
+                if (result.dstPort == dstPort)
+                    resPort += result.toString();
+            }
+            Log.i(TAG, "Results for port " + Integer.toString(dstPort));
+            Log.i(TAG, resPort);
+        }
         return ret;
     }
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
         basicTests.add(new TCPTest("ACK-only", 2));
-        // basicTests.add(new TCPTest("URG-only", 3));
-        // basicTests.add(new TCPTest("ACK-URG", 4));
-        // basicTests.add(new TCPTest("plain-URG", 5));
-        // basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
-        // basicTests.add(new TCPTest("ACK-checksum", 7));
-        // basicTests.add(new TCPTest("URG-URG", 8));
-        // basicTests.add(new TCPTest("URG-checksum", 9));
-        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
-        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
+        basicTests.add(new TCPTest("URG-only", 3));
+        basicTests.add(new TCPTest("ACK-URG", 4));
+        basicTests.add(new TCPTest("plain-URG", 5));
+        basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
+        basicTests.add(new TCPTest("ACK-checksum", 7));
+        basicTests.add(new TCPTest("URG-URG", 8));
+        basicTests.add(new TCPTest("URG-checksum", 9));
+        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         // TODO: add seed in production
@@ -235,7 +246,7 @@ public class RawSocketTester extends Test
     private boolean preventRst(int src_port, int dst_port, InetAddress dst) {
         String cmd = String.format(IPTABLES_CMD, 'A', src_port, dst_port, dst.getHostAddress());
         Command shellCmd = new CommandCapture(0, cmd);
-        Log.d(TAG, "Iptables command to execute: " + cmd);
+        // Log.d(TAG, "Iptables command to execute: " + cmd);
         try {
             Shell.runRootCommand(shellCmd);
             while (true) {
@@ -266,7 +277,7 @@ public class RawSocketTester extends Test
     private boolean allowRst(int src_port, int dst_port, InetAddress dst) {
         String cmd = String.format(IPTABLES_CMD, 'D', src_port, dst_port, dst.getHostAddress());
         Command shellCmd = new CommandCapture(1, cmd);
-        Log.d(TAG, "Iptables command to execute: " + cmd);
+        // Log.d(TAG, "Iptables command to execute: " + cmd);
         try {
             Shell.runRootCommand(shellCmd);
             while (true) {
@@ -351,7 +362,7 @@ public class RawSocketTester extends Test
             this.extras = extras;
         }
         public String toString() {
-            return "Test " + name 
+            return "\tTest " + name 
                 + " from " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
                 + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
                 + (result == true ? " passed" : " failed")

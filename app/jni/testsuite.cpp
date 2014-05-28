@@ -99,9 +99,10 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     test_error ret = success;
     if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (expect_length > receiveLength || memcmp(data, expect_payload, expect_length) != 0) {
-            LOGE("Payload wrong value, received %d data bytes:", receiveLength);
-            printBufferHex(data, receiveLength);
-            LOGE("Expected:");
+            LOGD("Payload wrong value, received %d data bytes:", receiveLength);
+            if (receiveLength > 0)
+                printBufferHex(data, receiveLength);
+            LOGD("Expected:");
             printBufferHex(expect_payload, expect_length);
             ret = test_failed;
         }
@@ -133,7 +134,7 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbeef0001";
     int send_length = strlen(send_payload);
     int expect_length = 4;
     char expect_payload[expect_length];
@@ -159,7 +160,7 @@ test_error runTest_urg_only(uint32_t source, uint16_t src_port, uint32_t destina
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe02";
     int send_length = strlen(send_payload);
     int expect_length = 2;
     char expect_payload[expect_length];
@@ -183,7 +184,7 @@ test_error runTest_ack_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe03";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -205,7 +206,7 @@ test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destin
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe04";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -227,7 +228,7 @@ test_error runTest_ack_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbeef0005";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -250,7 +251,7 @@ test_error runTest_ack_checksum_incorrect_seq(uint32_t source, uint16_t src_port
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbeef000D";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -272,7 +273,7 @@ test_error runTest_ack_checksum(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbeef0006";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -294,7 +295,7 @@ test_error runTest_urg_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe07";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -316,7 +317,7 @@ test_error runTest_urg_checksum(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe08";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -338,7 +339,7 @@ test_error runTest_urg_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_0xbe09";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -358,7 +359,7 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t data_out_res = 0;
     uint8_t data_in_res = 0;
 
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_reserved_SYN";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
@@ -385,7 +386,7 @@ test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t syn_res = 0;
     uint8_t synack_res = 0;
     
-    char send_payload[] = "HELLO";
+    char send_payload[] = "HELLO_reserved_EST";
     int send_length = strlen(send_payload);
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);

@@ -163,13 +163,13 @@ public class SocketTesterServer extends Thread {
         boolean result = false;
         lock.lock();
         try {
-            Log.d(TAG, "Sending message " + RawSocketTester.bytesToHex(msg, msg[0]));
+            // Log.d(TAG, "Sending message " + RawSocketTester.bytesToHex(msg, msg[0]));
             if (!clientConnected) {
                 Log.d(TAG, "Waiting for client to connect");
                 connected.await();
             }
             
-            Log.d(TAG, "Client connected, writing the message to socket");
+            // Log.d(TAG, "Client connected, writing the message to socket");
             socketWriter.write(msg, 0, msg[0]);
             result = true;
         } catch (InterruptedException e) {
@@ -198,10 +198,10 @@ public class SocketTesterServer extends Thread {
             if (bytesRead > 0) {
                 posOffset += bytesRead;
                 totalBytesRead += bytesRead;
-                Log.d(TAG, "Receive data from socket, bytesRead = " + bytesRead + ", " + RawSocketTester.bytesToHex(buffer, totalBytesRead));
+                // Log.d(TAG, "Receive data from socket, bytesRead = " + bytesRead + ", " + RawSocketTester.bytesToHex(buffer, totalBytesRead));
                 byte cmdLen = buffer[0];
                 if (cmdLen == totalBytesRead) {
-                    Log.d(TAG, "Full command received");
+                    // Log.d(TAG, "Full command received");
                     break;
                 }
             }

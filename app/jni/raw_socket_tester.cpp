@@ -74,7 +74,7 @@ int main() {
 
     LOGD("Creating socket");
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "Fatal: Error opening unix socket %s", strerror(errno));
+        LOGE("Fatal: Error opening unix socket %s", strerror(errno));
         exit(1);
     }
 
@@ -87,19 +87,19 @@ int main() {
 
     LOGI("Connecting from native to local socket");
     if (connect(s, (struct sockaddr *)&local, len) == -1) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "Fatal: Error connecting to unix socket %s", strerror(errno));
+        LOGE("Fatal: Error connecting to unix socket %s", strerror(errno));
         exit(1);
     }
 
     int offset = 0;
     bool open = true;
     while (open) {
-        LOGI("Receiving from socket, offset %d", offset);
+        LOGD("Receiving from socket, offset %d", offset);
         int n = recv(s, buffer+offset, BUFLEN-offset, 0);
-        LOGI("Received %d bytes", n);
+        LOGD("Received %d bytes", n);
         if (n <= 0) {
             if (n < 0) {
-                __android_log_print(ANDROID_LOG_ERROR, TAG, "Error while receiving from local unix socket %s", strerror(errno));
+                LOGE("Error while receiving from local unix socket %s", strerror(errno));
                 open = false;
                 break;
             } else {
@@ -112,8 +112,8 @@ int main() {
         
         // IPC message read completely
         if (n >= ipc->length) {
-            LOGD("Payload: ");
-            printBufferHex(buffer, ipc->length);
+            // LOGD("Payload: ");
+            // printBufferHex(buffer, ipc->length);
             // TODO: parse and process the message
 
             test_error result = test_failed;    // by default

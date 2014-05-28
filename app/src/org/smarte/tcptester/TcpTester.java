@@ -20,6 +20,8 @@ import android.app.Activity;
 import android.widget.TextView;
 import android.os.Bundle;
 import android.view.View;
+import android.util.Log;
+
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 
@@ -40,6 +42,16 @@ public class TcpTester extends Activity implements View.OnClickListener
     public void onClick(View v) {
         Test tcpTester = new RawSocketTester("TCPTester", getApplicationContext());
         tcpTester.init();
-        new Thread(tcpTester).start();
+        Thread t = new Thread(tcpTester);
+        t.start();
+        
+        // try {
+        //     t.start();
+        //     synchronized(t) {
+        //         t.wait();
+        //     }
+        // } catch (InterruptedException e) {
+        //     Log.e(TAG, "Tester thread interrupted", e);
+        // }
     }
 }

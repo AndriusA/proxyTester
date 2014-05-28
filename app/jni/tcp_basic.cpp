@@ -143,8 +143,8 @@ int receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
         }
 
         if (validPacket(ip, tcp, exp_src, exp_dst)) {
-            printPacketInfo(ip, tcp);
-            printBufferHex((char*)ip, length);
+            // printPacketInfo(ip, tcp);
+            // printBufferHex((char*)ip, length);
             return length;
         }
         else {
@@ -246,7 +246,7 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->urg_ptr    = htons(syn_urg);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
-    printPacketInfo(ip, tcp);
+    // printPacketInfo(ip, tcp);
 }
 
 // Build a TCP/IP ACK packet with the given
@@ -273,7 +273,7 @@ void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->urg_ptr    = 0;
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
-    printPacketInfo(ip, tcp);
+    // printPacketInfo(ip, tcp);
 }
 
 // Build a TCP/IP FIN packet with the given
@@ -300,7 +300,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->window     = htons(TCPWINDOW);
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
-    printPacketInfo(ip, tcp);
+    // printPacketInfo(ip, tcp);
 }
 
 // Build a TCP/IP data packet with the given
@@ -341,8 +341,8 @@ void buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
 
-    printPacketInfo(ip, tcp);
-    printBufferHex((char*)ip, IPHDRLEN + TCPHDRLEN + datalen);   
+    // printPacketInfo(ip, tcp);
+    // printBufferHex((char*)ip, IPHDRLEN + TCPHDRLEN + datalen);   
 }
 
 // TCP handshake function, parametrised with a bunch of values for our testsuite
@@ -462,12 +462,20 @@ test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int &receiveDataLength)
 {
     int receiveLength = receivePacket(socket, ip, tcp, dst, src);
+    if (receiveLength == -1 || receiveLength < IPHDRLEN + TCPHDRLEN) {
+        receiveDataLength = 0;
+        return receive_error;
+    } 
     receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
     // TODO: handle the new sequence numbers
     seq_local = ntohl(tcp->ack_seq);
     // When the ACK of a previous packet gets sent separately from the data
     if (receiveDataLength == 0) {
         int receiveLength = receivePacket(socket, ip, tcp, dst, src);
+        if (receiveLength == -1 || receiveLength < IPHDRLEN + TCPHDRLEN) {
+            receiveDataLength = 0;
+            return receive_error;
+        }
         receiveDataLength = receiveLength - IPHDRLEN - TCPHDRLEN;
     }
     return success;
