@@ -1,5 +1,18 @@
 #! /usr/bin/python
 
+# Copyright (c) 2014 Andrius Aucinas <andrius.aucinas@cl.cam.ac.uk>
+# 
+# Permission to use, copy, modify, and distribute this software for any
+# rpose with or without fee is hereby granted, provided that the above
+# pyright notice and this permission notice appear in all copies.
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 from scapy.all import *
 import pprint
 import threading
@@ -7,6 +20,25 @@ import Queue
 
 connectionInfo = {}
 connectionTest = {}
+
+def hexdump(x):
+  x = str(x)
+  l = len(x)
+  i = 0
+  result = ""
+  while i < l:
+    result += '{:04X}'.format(i) + "   "
+    for j in range(16):
+      if i+j < l:
+        result += '{:02X}'.format(ord(x[i+j]))
+      else:
+        result += "   "
+      if j%16 == 7:
+        result += " "
+    result += "  "
+    result += sane_color(x[i:i+16]) + "\n"
+    i += 16
+  return result
 
 def ip2int(addr):                                                               
     return struct.unpack("!I", socket.inet_aton(addr))[0]
@@ -40,52 +72,53 @@ def process_packet(pkt_in):
 
   connID = dst + str(dport)
   connStatus = connectionInfo.get(connID, TCPCState.CLOSED)
+  logfile = open(dst+".log", "a")
   if (connStatus != TCPCState.CLOSED):
-    print "<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport)
-    hexdump(pkt_in)
+    logfile.write("<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport) + "\n")
+    logfile.write(hexdump(pkt_in))
 
   if (pkt_in[TCP].flags == 0x02):
     if (connStatus != TCPCState.CLOSED):
-    	print "\tConnection already exists!"
+    	logfile.write("\tConnection already exists!" + "\n")
     connectionInfo[connID] = TCPCState.SYN_RECEIVED
     pak = None
 
     if (pkt_in[TCP].ack == 0xbeef0001):
-      print "\n\n--- TESTCASE 0xbeef0001 ---" 
+      logfile.write("\n\n--- TESTCASE 0xbeef0001 ---" + "\n")
       connectionTest[connID] = 1
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].urgptr == 0xbe02):
-      print "\n\n--- TESTCASE 0xbe02 ---"
+      logfile.write("\n\n--- TESTCASE 0xbe02 ---" + "\n")
       connectionTest[connID] = 2
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].ack == 0xbeef0003):
-      print "\n\n--- TESTCASE 0xbeef0003 ---"
+      logfile.write("\n\n--- TESTCASE 0xbeef0003 ---" + "\n")
       connectionTest[connID] = 3
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe03)
       pak=ip/SYNACK
 
     elif (pkt_in[TCP].ack == 0xbeef0005 or pkt_in[TCP].urgptr == 0xbe09):
       if (pkt_in[TCP].ack == 0xbeef0005):
-        print "\n\n--- TESTCASE 0xbeef0005 ---"
+        logfile.write("\n\n--- TESTCASE 0xbeef0005 ---" + "\n")
       elif (pkt_in[TCP].urgptr == 0xbe09):
-        print "\n\n--- TESTCASE 0xbe09 ---"
+        logfile.write("\n\n--- TESTCASE 0xbe09 ---" + "\n")
       connectionTest[connID] = 9
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
       checksum = 0xbeef
       checksum = checksum_sub_32(checksum, ip2int(dst))
       checksum = checksum_sub(checksum, dport)
-      print "SYNACK with checksum " + hex(checksum)
+      logfile.write("SYNACK with checksum " + hex(checksum) + "\n")
       # Force TCP checksum to be recalculated
       del pak[TCP].chksum
       pak[TCP].chksum = checksum
 
     elif (pkt_in[TCP].ack == 0xbeef000D):
-      print "\n\n--- TESTCASE 0xbeef000D ---"
+      logfile.write("\n\n--- TESTCASE 0xbeef000D ---" + "\n")
       connectionTest[connID] = 8
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
@@ -95,7 +128,7 @@ def process_packet(pkt_in):
       checksum = checksum_sub(checksum, dport)
       checksum = checksum_sub_32(checksum, SYNACK.seq)
       checksum = checksum_sub_32(checksum, SYNACK.ack)
-      print "SYNACK with checksum " + hex(checksum)
+      logfile.write("SYNACK with checksum " + hex(checksum) + "\n")
       # Force TCP checksum to be recalculated
       del pak[TCP].chksum
       pak[TCP].chksum = checksum
@@ -103,9 +136,9 @@ def process_packet(pkt_in):
 
     elif (pkt_in[TCP].ack == 0xbeef0006 or pkt_in[TCP].urgptr == 0xbe08):
       if (pkt_in[TCP].ack == 0xbeef0006):
-        print "\n\n--- TESTCASE 0xbeef0006 ---"
+        logfile.write("\n\n--- TESTCASE 0xbeef0006 ---" + "\n")
       elif (pkt_in[TCP].urgptr == 0xbe08):
-        print "\n\n--- TESTCASE 0xbe05 ---"
+        logfile.write("\n\n--- TESTCASE 0xbe05 ---" + "\n")
       connectionTest[connID] = 6
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
       pak=ip/SYNACK
@@ -119,61 +152,61 @@ def process_packet(pkt_in):
       # Difference between the current checksum and the desired one, also payload length
       chksumDiff = checksum_sub(checksum_sub(packet[TCP].chksum, checksum), 2)
       pak = pak/struct.pack('>H', chksumDiff)
-      print "SYNACK with checksum " + hex(checksum) + " and payload for validity"
+      logfile.write("SYNACK with checksum " + hex(checksum) + " and payload for validity" + "\n")
 
     elif (pkt_in[TCP].urgptr == 0xbe07):
-      print "\n\n--- TESTCASE 0xbe07 ---"
+      logfile.write("\n\n--- TESTCASE 0xbe07 ---" + "\n")
       connectionTest[connID] = 7
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe07)
       pak=ip/SYNACK
 
     elif(pkt_in[TCP].reserved > 0):
-      print "\n\n--- TESTCASE SYN RESERVED ---"
-      print "SYN packet with reserved " + str(pkt_in[TCP].reserved)
+      logfile.write("\n\n--- TESTCASE SYN RESERVED ---" + "\n")
+      logfile.write("SYN packet with reserved " + str(pkt_in[TCP].reserved) + "\n")
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, reserved=pkt_in[TCP].reserved)
       pak=ip/SYNACK
 
     else:
-      print "\n\n--- TESTCASE 0xbe04 ---"
-      print "Default SYNACK, for packet with ACK = " + hex(pkt_in[TCP].ack)
+      logfile.write("\n\n--- TESTCASE 0xbe04 ---" + "\n")
+      logfile.write("Default SYNACK, for packet with ACK = " + hex(pkt_in[TCP].ack) + "\n")
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe04)
       pak=ip/SYNACK
     
-    print "\t(SYN packet)"
-    print "<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport)
-    hexdump(pkt_in)
-    print "----> Response"  
-    hexdump(pak)
+    logfile.write("\t(SYN packet)" + "\n")
+    logfile.write("<---- Packet received from " + dst + ":" + str(dport) + " to " + src + ":" + str(sport) + "\n")
+    logfile.write(hexdump(pkt_in))
+    logfile.write("----> Response" + "\n")
+    logfile.write(hexdump(pak))
     return pak
 
   elif (pkt_in[TCP].flags & 0x01):
-    print "Closing, FIN"
-    print "----------------"
+    logfile.write("Closing, FIN" + "\n")
+    logfile.write("----------------" + "\n")
     # Remove connection from the dictionary
     connectionInfo[connID] = TCPCState.LAST_ACK
     FINACK=TCP(sport=sport, dport=dport, flags="FA", seq=pkt_in[TCP].ack, ack=pkt_in[TCP].seq + 1)
     pak=ip/FINACK
-    print "----> Response"  
-    hexdump(pak)
+    logfile.write("----> Response" + "\n")
+    logfile.write(hexdump(pak))
     return pak
 
   elif (pkt_in[TCP].flags == 0x10 and not Raw in pkt_in):
-    print "ACK empty"
+    logfile.write("ACK empty" + "\n")
     if (connStatus == TCPCState.SYN_RECEIVED):
-    	print "Empty ACK in handshake"
+    	logfile.write("Empty ACK in handshake" + "\n")
     	connectionInfo[connID] = TCPCState.ESTABLISHED
     elif (connStatus == TCPCState.LAST_ACK):
-      print "Last ACK, connection closed"
-      print "----------------"
+      logfile.write("Last ACK, connection closed" + "\n")
+      logfile.write("----------------" + "\n")
       del connectionInfo[connID]
     return None
 
   elif (Raw in pkt_in): 
-    print "Payload: " + pkt_in[Raw].load + ", len = " + str(len(pkt_in[Raw].load))
+    logfile.write("Payload: " + pkt_in[Raw].load + ", len = " + str(len(pkt_in[Raw].load)) + "\n")
     if (connStatus != TCPCState.ESTABLISHED):
-    	print "Packet with payload but no connection"
+    	logfile.write("Packet with payload but no connection" + "\n")
     if (pkt_in[TCP].reserved > 0):
-      print "Data packet reserved field: " + str(pkt_in[TCP].reserved)
+      logfile.write("Data packet reserved field: " + str(pkt_in[TCP].reserved) + "\n")
     ACK=TCP(sport=sport, dport=dport, flags="A", seq=pkt_in[TCP].ack, ack=pkt_in[TCP].seq+len(pkt_in[Raw].load), reserved=pkt_in[TCP].reserved)
     payload = ""
     currentTest = connectionTest.get(connID, 0)
@@ -184,8 +217,8 @@ def process_packet(pkt_in):
     else:
       payload = "OLLEH"
     pak=ip/ACK/payload
-    print "----> Response"  
-    hexdump(pak)
+    logfile.write("----> Response" + "\n")
+    logfile.write(hexdump(pak))
     return pak
 
 class TCPCState:
@@ -228,4 +261,4 @@ processor.start()
 sender.daemon = True
 sender.start()
 
-sniff(prn=receive_queue.put, filter="tcp and dst 192.95.61.161 and (dst port 6969 or dst port 80 or dst port 443 or dst port 8080 or dst port 8000)", store=0)
+sniff(prn=receive_queue.put, filter="tcp and dst 192.95.61.161 and (dst port 6969 or dst port 80 or dst port 443 or dst port 8080 or dst port 8000 or dst port 445 or dst port 993 or dst port 139)", store=0)

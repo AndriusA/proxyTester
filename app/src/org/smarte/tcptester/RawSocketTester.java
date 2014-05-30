@@ -72,7 +72,7 @@ public class RawSocketTester extends Test
             mServerAddress = null;
         }
         // TODO: also add other common ones: 80 8000 8080
-        mServerPorts = new int[]{6969, 80, 8080, 8000, 443};
+        mServerPorts = new int[]{139, 80, 445, 993, 8000, 443};
     }    
 
     public int runImpl() throws IOException {
@@ -104,7 +104,7 @@ public class RawSocketTester extends Test
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
         for (TCPTest test : tests) {
-            Log.d(TAG, "Running test " + test.toString());
+            Log.d(TAG, "Running test " + test.name);
 
             boolean iptablesAdded = false;
             try {
@@ -116,8 +116,11 @@ public class RawSocketTester extends Test
                 Log.e(TAG, "Exception while setting iptables rule or running test", e);
             } finally {
                 boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
-                if (iptablesAdded && !allowed)
+                if (iptablesAdded && !allowed) {
                     Log.e(TAG, "IPTables rule added but not removed!");
+                    // Break the for loop
+                    break;
+                }
             }
         } 
        
@@ -254,7 +257,7 @@ public class RawSocketTester extends Test
                     break;
                 else {
                     // Busy wait for command to finish
-                    Thread.sleep(100);
+                    Thread.sleep(10);
                 }
             }
         } catch (IOException e) {
@@ -270,7 +273,7 @@ public class RawSocketTester extends Test
             Log.e(TAG, "Root denied for shell, quitting", e);
             return false;
         }
-        Log.d(TAG, "iptables rule enabled");
+        // Log.d(TAG, "iptables rule enabled");
         return true;
     }
 
@@ -285,7 +288,7 @@ public class RawSocketTester extends Test
                     break;
                 else {
                     // Log.d(TAG, shellCmd.getCommand() + " running? " + shellCmd.isExecuting());
-                    Thread.sleep(100);
+                    Thread.sleep(10);
                 }
             }
         } catch (IOException e) {
@@ -301,7 +304,7 @@ public class RawSocketTester extends Test
             Log.e(TAG, "Root denied for shell, quitting", e);
             return false;
         }
-        Log.d(TAG, "iptables rule disabled");
+        // Log.d(TAG, "iptables rule disabled");
         return true;
     }
 
@@ -362,8 +365,8 @@ public class RawSocketTester extends Test
             this.extras = extras;
         }
         public String toString() {
-            return "\tTest " + name 
-                + " from " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
+            return "\t" + name 
+                + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
                 + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
                 + (result == true ? " passed" : " failed")
                 + (extras > 0 ? " " + Integer.toBinaryString(extras) : "") + "\n";
