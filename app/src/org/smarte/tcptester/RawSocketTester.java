@@ -72,7 +72,7 @@ public class RawSocketTester extends Test
             mServerAddress = null;
         }
         // TODO: also add other common ones: 80 8000 8080
-        mServerPorts = new int[]{139, 80, 445, 993, 8000, 443};
+        mServerPorts = new int[]{80, 443, 993, 8000, 5258, 6969};
     }    
 
     public int runImpl() throws IOException {
@@ -134,26 +134,27 @@ public class RawSocketTester extends Test
         }
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
-        Log.i(TAG, "Network info: " + networkInfo.toString());
-        this.getPostResults();
         Log.i(TAG, "Test complete");
         return Test.TEST_COMPLEX; 
     }
 
     public String getPostResults() {
         String ret = "";
+        ConnectivityManager connMgr = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        ret += "Network info: " + networkInfo.toString();
         for (TCPTest result : mResults) {
             ret += result.toString();
         }
-        for (int dstPort : mServerPorts) {
-            String resPort = "";
-            for (TCPTest result : mResults) {
-                if (result.dstPort == dstPort)
-                    resPort += result.toString();
-            }
-            Log.i(TAG, "Results for port " + Integer.toString(dstPort));
-            Log.i(TAG, resPort);
-        }
+        // for (int dstPort : mServerPorts) {
+        //     String resPort = "";
+        //     for (TCPTest result : mResults) {
+        //         if (result.dstPort == dstPort)
+        //             resPort += result.toString();
+        //     }
+        //     Log.i(TAG, "Results for port " + Integer.toString(dstPort));
+        //     Log.i(TAG, resPort);
+        // }
         return ret;
     }
 
