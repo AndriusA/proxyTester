@@ -214,6 +214,8 @@ def process_packet(pkt_in):
       payload = longToStr(0xbeef0001)
     elif (currentTest == 2):
       payload = shortToStr(0xbe02)
+    elif (pkt_in[Raw].load == "GETMYIP"):
+      payload = longToStr(ip2int(ip.dst))
     else:
       payload = "OLLEH"
     pak=ip/ACK/payload

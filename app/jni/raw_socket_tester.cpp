@@ -55,6 +55,8 @@ enum opcode_t : uint8_t {
     RESERVED_EST = 12,
     ACK_CHECKSUM_INCORRECT_SEQ = 13,
     ACK_CHECKSUM_SEQ = 14,
+    GET_GLOBAL_IP = 21,
+    RET_GLOBAL_IP = 22,
     RESULT_NOT_IMPLEMENTED = 51,
 };
 
@@ -65,7 +67,7 @@ struct ipcmsg {
 };
 
 int main() {
-    LOGI("Starting TCPTester service v%d", 6);
+    LOGI("Starting TCPTester service v%d", 7);
     int s, t, len;
     struct sockaddr_un local;
     char buffer[BUFLEN];
@@ -112,13 +114,15 @@ int main() {
         
         // IPC message read completely
         if (n >= ipc->length) {
-            // LOGD("Payload: ");
-            // printBufferHex(buffer, ipc->length);
+            LOGD("Payload: ");
+            printBufferHex(buffer, ipc->length);
             // TODO: parse and process the message
 
             test_error result = test_failed;    // by default
             int result_code = 0;
-            if ( ipc->opcode >= ACK_ONLY && ipc->opcode <= ACK_CHECKSUM_SEQ ) {
+            uint32_t extras = 0;
+            opcode_t currentTest = ipc->opcode;
+            if ( currentTest >= ACK_ONLY && currentTest <= GET_GLOBAL_IP ) {
                 uint32_t source = 0, destination = 0;
                 uint16_t src_port = 0, dst_port = 0;
                 for (int b = 0; b < 4; b++) {
@@ -132,8 +136,8 @@ int main() {
                 uint8_t reserved = 0;
                 if (n > 2+4+2+4+2)
                     reserved = buffer[2+4+2+4+2];
-                LOGD("Selecting test for opcode %d", ipc->opcode);
-                switch (ipc->opcode) {
+                LOGD("Selecting test for opcode %d", currentTest);
+                switch (currentTest) {
                     case ACK_ONLY:
                         result = runTest_ack_only(source, src_port, destination, dst_port);
                         break;
@@ -170,6 +174,13 @@ int main() {
                     case ACK_CHECKSUM_INCORRECT_SEQ:
                         result = runTest_ack_checksum_incorrect_seq(source, src_port, destination, dst_port);
                         break;
+                    case GET_GLOBAL_IP:
+                        extras = getOwnIp(source, src_port, destination, dst_port);
+                        LOGD("getOwnIP returned %d", extras);
+                        if (extras != 0)
+                            result = test_complete;
+                        else
+                            result = test_failed;
                     default:
                         result = test_not_implemented;
                         break;
@@ -181,9 +192,15 @@ int main() {
             ipc->length = 1+1;
             if (result == test_complete) {
                 ipc->opcode = RESULT_SUCCESS;
-            }
-            else
+            } else if (currentTest == GET_GLOBAL_IP) {
+                LOGD("Responding with the global address");
+                ipc->opcode = RET_GLOBAL_IP;
+                ipc->length = 1 + 1 + 4;
+                for (int i = 0; i < 4; i++)
+                    buffer[sizeof(ipcmsg) + i] = (extras >> ((3-i) * 8)) & 0xFF;
+            } else
                 ipc->opcode = RESULT_FAIL;
+
             LOGD("Sending message to the socket, opcode %d", ipc->opcode);
             int ret = write(s, buffer, ipc->length);
             memset(buffer, 0, BUFLEN);

@@ -84,6 +84,10 @@ public class RawSocketTester extends Test
                 return Test.TEST_PROHIBITED;
             }
         }
+
+        if (!RootTools.isRootAvailable() || !RootTools.isAccessGiven()) {
+            return Test.TEST_PROHIBITED;
+        }
         
         if (mServerAddress == null) {
             return Test.TEST_ERROR | Test.TEST_ERROR_UNKNOWN_HOST;
@@ -104,23 +108,31 @@ public class RawSocketTester extends Test
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
         for (TCPTest test : tests) {
-            Log.d(TAG, "Running test " + test.name);
+            Log.d(TAG, "Running test " + test.toString());
 
             boolean iptablesAdded = false;
             try {
                 iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
                 // Try runnig the test regardless
-                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort, (byte)test.extras);
+                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
+                if (test.opcode == TCPTest.TEST_GET_GLOBAL_IP && res == true) {
+                    test.extras = mTesterServer.responseExtra;
+                }
                 mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
                 Log.e(TAG, "Exception while setting iptables rule or running test", e);
-            } finally {
+            }
+
+            try {
                 boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
                 if (iptablesAdded && !allowed) {
                     Log.e(TAG, "IPTables rule added but not removed!");
                     // Break the for loop
                     break;
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "Exception while setting iptables rule or running test", e);
+                break;
             }
         } 
        
@@ -146,15 +158,6 @@ public class RawSocketTester extends Test
         for (TCPTest result : mResults) {
             ret += result.toString();
         }
-        // for (int dstPort : mServerPorts) {
-        //     String resPort = "";
-        //     for (TCPTest result : mResults) {
-        //         if (result.dstPort == dstPort)
-        //             resPort += result.toString();
-        //     }
-        //     Log.i(TAG, "Results for port " + Integer.toString(dstPort));
-        //     Log.i(TAG, resPort);
-        // }
         return ret;
     }
 
@@ -183,6 +186,8 @@ public class RawSocketTester extends Test
         // TODO: add seed in production
         Random rng = new Random();
         List<InetAddress> localAddresses = getOwnInetAddresses();
+        completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 443, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
+
         for (TCPTest test : basicTests) {
             for (int dstPort : serverPorts) {
                 for (InetAddress localAddress : localAddresses) {
@@ -202,8 +207,8 @@ public class RawSocketTester extends Test
             Enumeration<NetworkInterface> en;
             for ( en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
                 NetworkInterface intf = en.nextElement();
-                Log.d(TAG, "Checking interface " + intf.toString());
-                Log.d(TAG, "Interface status: " + intf.isLoopback() + intf.isPointToPoint() + intf.isUp());
+                // Log.d(TAG, "Checking interface " + intf.toString());
+                // Log.d(TAG, "Interface status: " + intf.isLoopback() + intf.isPointToPoint() + intf.isUp());
                 // BUGFIX: removed && !intf.isPointToPoint() - broken on CyanogenMod 10.2 for cellular interface
                 if (!intf.isLoopback() && intf.isUp() ) {
                     for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
@@ -318,59 +323,5 @@ public class RawSocketTester extends Test
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
-    }
-
-    // Inner class representing each testcase and its result
-    // Together with covenience copy-constructors and toString for returning results 
-    public class TCPTest {
-        public String name;
-        public byte opcode;
-        public boolean result = false;
-        public int extras = 0;
-        public InetAddress src;
-        public int srcPort;
-        public InetAddress dst;
-        public int dstPort;
-        public TCPTest(String name, int opcode) {
-            this.name = name;
-            this.opcode = (byte) opcode;
-        }
-        public TCPTest(String name, int opcode, int extras) {
-            this(name, opcode);
-            this.extras = extras;
-        }
-        public TCPTest(TCPTest t) {
-            this.name = t.name;
-            this.opcode = t.opcode;
-            this.src = t.src;
-            this.srcPort = t.srcPort;
-            this.dst = t.dst;
-            this.dstPort = t.dstPort;
-            this.result = t.result;
-            this.extras = t.extras;
-        }
-        public TCPTest(TCPTest t, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
-            this(t);
-            this.dst = dst;
-            this.dstPort = dstPort;
-            this.src = src;
-            this.srcPort = srcPort;
-        }
-        public TCPTest(TCPTest t, boolean result) {
-            this(t);
-            this.result = result;
-        }
-        public TCPTest(TCPTest t, boolean result, int extras) {
-            this(t);
-            this.result = result;
-            this.extras = extras;
-        }
-        public String toString() {
-            return "\t" + name 
-                + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
-                + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
-                + (result == true ? " passed" : " failed")
-                + (extras > 0 ? " " + Integer.toBinaryString(extras) : "") + "\n";
-        }
     }
 }

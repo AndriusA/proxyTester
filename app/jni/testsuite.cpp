@@ -403,3 +403,68 @@ test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t des
     }
     return res;
 }
+
+uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
+{
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;    
+    char send_payload[] = "GETMYIP";
+    int send_length = strlen(send_payload);
+
+    int sock;
+    char buffer[BUFLEN] = {0};
+    struct iphdr *ip;
+    struct tcphdr *tcp;
+    struct sockaddr_in src, dst;
+    uint32_t seq_local, seq_remote;
+    ip = (struct iphdr*) buffer;
+    tcp = (struct tcphdr*) (buffer + IPHDRLEN);
+    char *data = buffer + IPHDRLEN + TCPHDRLEN;
+
+    if (setupSocket(sock) != success) {
+        LOGE("Socket setup failed: %s", strerror(errno));
+        return 0;
+    }
+
+    src.sin_family = AF_INET;
+    src.sin_port = htons(src_port);
+    src.sin_addr.s_addr = htonl(source);
+    dst.sin_family = AF_INET;
+    dst.sin_port = htons(dst_port);
+    dst.sin_addr.s_addr = htonl(destination);
+
+    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
+        syn_ack, syn_urg, syn_res, 
+        synack_urg, synack_check, synack_res) != success)
+    {
+        LOGE("TCP handshake failed: %s", strerror(errno));
+        return 0;
+    }
+
+    sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
+    int receiveLength = 0;
+    uint32_t global_source = 0;
+    if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
+        // Needs to be 4 bytes address
+        if (receiveLength == 4) {
+            for (int b = 0; b < 4; b++) {
+                global_source |= ( data[b] & (char)0xFF ) << (8 * (3-b));
+            }
+            LOGD("Received IP address response %d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+        } else {
+            LOGE("IP address response wrong length %d", receiveLength);
+        }
+
+        if (receiveLength > 0) {
+            acknowledgeData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength);
+        }
+    }
+    shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
+    return global_source;
+}

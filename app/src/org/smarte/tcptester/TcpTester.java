@@ -69,15 +69,16 @@ public class TcpTester extends Activity implements View.OnClickListener
         }
 
         Log.d(TAG, "Posting results");
-        postDataHttp(tcpTester.getPostResults());
+        postDataHttp(tcpTester);
     }
 
-    private void postDataHttp(String data) {
+    private void postDataHttp(Test test) {
         DefaultHttpClient httpclient = new DefaultHttpClient();
         HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
         nameValuePairs.add(new BasicNameValuePair("id", "12345"));
-        nameValuePairs.add(new BasicNameValuePair("result", data));
+        nameValuePairs.add(new BasicNameValuePair("duration", Long.toString(test.getDuration())));
+        nameValuePairs.add(new BasicNameValuePair("result", test.getPostResults()));
 
         try {
             httpost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
