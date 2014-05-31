@@ -162,21 +162,21 @@ public class RawSocketTester extends Test
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
         basicTests.add(new TCPTest("ACK-only", 2));
         basicTests.add(new TCPTest("URG-only", 3));
-        basicTests.add(new TCPTest("ACK-URG", 4));
+        // basicTests.add(new TCPTest("ACK-URG", 4));
         basicTests.add(new TCPTest("plain-URG", 5));
         basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
         basicTests.add(new TCPTest("ACK-checksum", 7));
-        basicTests.add(new TCPTest("URG-URG", 8));
+        // basicTests.add(new TCPTest("URG-URG", 8));
         basicTests.add(new TCPTest("URG-checksum", 9));
         basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
         basicTests.add(new TCPTest("Reserved-syn", 11, 1));
         basicTests.add(new TCPTest("Reserved-syn", 11, 2));
         basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
         basicTests.add(new TCPTest("Reserved-est", 12, 1));
         basicTests.add(new TCPTest("Reserved-est", 12, 2));
         basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
         basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
