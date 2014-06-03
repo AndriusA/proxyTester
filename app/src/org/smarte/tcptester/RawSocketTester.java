@@ -43,8 +43,20 @@ import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
 import edu.berkeley.icsi.netalyzr.tests.Test;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.methods.HttpPost;
+import java.io.UnsupportedEncodingException;
+import android.os.AsyncTask;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.client.ResponseHandler;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
-public class RawSocketTester extends Test
+
+public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
     public static final String TAG = "TCPTester";
     private static final String TESTER_BINARY = "tcptester";
@@ -57,11 +69,16 @@ public class RawSocketTester extends Test
     private InetAddress mServerAddress;
     private int[] mServerPorts; 
     private ArrayList<TCPTest> mResults;
+    private ProgressBar mProgress;
+    private TextView mProgressText, mSubmittedResults;
 
-    public RawSocketTester(String name, Context context) {
-        super(name);
+    public RawSocketTester(Context context, ProgressBar progress, TextView progressText, TextView submittedResults) {
+        super();
         mContext = context;
         mResults = new ArrayList<TCPTest>();
+        mProgress = progress;
+        mProgressText = progressText;
+        mSubmittedResults = submittedResults;
     }
 
     public void init() {
@@ -75,7 +92,8 @@ public class RawSocketTester extends Test
         mServerPorts = new int[]{80, 443, 993, 8000, 5258, 6969};
     }    
 
-    public int runImpl() throws IOException {
+    protected Integer doInBackground(Void... none) {
+        init();
         if (!RootTools.hasBinary(mContext, TESTER_BINARY)) {
             if (RootTools.isRootAvailable() && installNativeBinary(mContext)) {
                 Log.d(TAG, "Native binary installed");
@@ -107,8 +125,13 @@ public class RawSocketTester extends Test
         RootTools.runBinary(mContext, TESTER_BINARY, address+" &");
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
+        mProgress.setMax(tests.size());
+        int testNo = 0;
         for (TCPTest test : tests) {
-            Log.d(TAG, "Running test " + test.toString());
+            if (isCancelled()) break;
+            testNo++;
+            publishProgress(1, testNo, tests.size());
+            Log.d(TAG, "Running test " + test.name);
 
             boolean iptablesAdded = false;
             try {
@@ -143,11 +166,49 @@ public class RawSocketTester extends Test
             Shell.closeAll();
         } catch (InterruptedException e) {
             Log.e(TAG, "LocalServerSocket thread interrupted", e);
+        } catch (IOException e) {
+            Log.e(TAG, "IOException closing all root shells", e);
         }
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
         Log.i(TAG, "Test complete");
+        postDataHttp();
         return Test.TEST_COMPLEX; 
+    }
+
+    protected void onProgressUpdate(Integer... progress) {
+         mProgress.incrementProgressBy(progress[0]);
+         mSubmittedResults.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
+     }
+
+    protected void onPostExecute(Integer result) {
+        super.onPostExecute(result);
+        if (result == Test.TEST_COMPLEX)
+            mSubmittedResults.setText("Results submitted, thank you!");
+        else
+            mSubmittedResults.setText("Text execution failed...");
+    }
+
+    private void postDataHttp() {
+        DefaultHttpClient httpclient = new DefaultHttpClient();
+        HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
+        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+        nameValuePairs.add(new BasicNameValuePair("id", "12345"));
+        // nameValuePairs.add(new BasicNameValuePair("duration", Long.toString()));
+        nameValuePairs.add(new BasicNameValuePair("result", getPostResults()));
+
+        try {
+            httpost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            //Handles what is returned from the page 
+            ResponseHandler responseHandler = new BasicResponseHandler();
+            httpclient.execute(httpost, responseHandler);
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "Error Post'ing", e);
+            return;
+        }  catch (IOException e) {
+            Log.e(TAG, "Error Post'ing", e);
+            return;
+        }
     }
 
     public String getPostResults() {

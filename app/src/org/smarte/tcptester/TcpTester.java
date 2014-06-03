@@ -33,6 +33,9 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.HttpResponse;
 import java.io.UnsupportedEncodingException;
 import java.io.IOException;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
+import android.os.AsyncTask;
 
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
@@ -40,55 +43,40 @@ import edu.berkeley.icsi.netalyzr.tests.Test;
 public class TcpTester extends Activity implements View.OnClickListener 
 {
     public static final String TAG = "TCPTester";
+    private ProgressBar mProgress;
+    private TextView mProgressText, mSubmittedResults;
 
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.form);
         int buttonId = R.id.connect;
-        View listener = findViewById(buttonId);
-        listener.setOnClickListener(this);
+        ImageButton btn = (ImageButton) findViewById(buttonId);
+        mProgress = (ProgressBar)findViewById(R.id.testProgress);
+        mProgressText = (TextView)findViewById(R.id.progressText);
+        mSubmittedResults = (TextView)findViewById(R.id.submittedResults);
+        btn.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        Test tcpTester = new RawSocketTester("TCPTester", getApplicationContext());
-        tcpTester.init();
-        Thread t = new Thread(tcpTester);
-        t.start();
+        new RawSocketTester(getApplicationContext(), mProgress, mProgressText, mSubmittedResults).execute();
 
-        try {
-            synchronized(tcpTester) {
-                if (tcpTester.getTestResultCode() == Test.TEST_NOT_EXECUTED) {
-                    Log.d(TAG, "Waiting for the test to finish");
-                    tcpTester.wait();
-                }
-            }
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Tester thread interrupted", e);
-        }
+        // tcpTester.init();
+        // Thread t = new Thread(tcpTester);
+        // t.start();
 
-        Log.d(TAG, "Posting results");
-        postDataHttp(tcpTester);
+        // try {
+        //     synchronized(tcpTester) {
+        //         if (tcpTester.getTestResultCode() == Test.TEST_NOT_EXECUTED) {
+        //             Log.d(TAG, "Waiting for the test to finish");
+        //             tcpTester.wait();
+        //         }
+        //     }
+        // } catch (InterruptedException e) {
+        //     Log.e(TAG, "Tester thread interrupted", e);
+        // }
     }
 
-    private void postDataHttp(Test test) {
-        DefaultHttpClient httpclient = new DefaultHttpClient();
-        HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
-        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
-        nameValuePairs.add(new BasicNameValuePair("id", "12345"));
-        nameValuePairs.add(new BasicNameValuePair("duration", Long.toString(test.getDuration())));
-        nameValuePairs.add(new BasicNameValuePair("result", test.getPostResults()));
-
-        try {
-            httpost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            //Handles what is returned from the page 
-            ResponseHandler responseHandler = new BasicResponseHandler();
-            httpclient.execute(httpost, responseHandler);
-        } catch (UnsupportedEncodingException e) {
-            Log.e(TAG, "Error Post'ing", e);
-        }  catch (IOException e) {
-            Log.e(TAG, "Error Post'ing", e);
-        }
-    }
+    
 }
