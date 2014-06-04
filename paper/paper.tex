@@ -1,0 +1,225 @@
+% This version uses the latex2e styles, not the very ancient 2.09 stuff.
+\documentclass{sig-alternate-10pt}
+\usepackage{endnotes,url}
+%\usepackage{sig-alternate-10pt,endnotes}
+\usepackage{epsfig}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{verbatim}
+% Replaced by subfig package
+% \usepackage{subfigure}
+\usepackage{subfig}
+\usepackage{epstopdf}
+\usepackage{cite}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{listings}
+
+
+%\pdfpagewidth 8.5in
+%\pdfpageheight 11in
+%\baselineskip=12.5pt
+%\setlength{\pdfpagewidth}{8.5in}
+%\setlength{\pdfpageheight}{11in}
+%\usepackage{pdfdraftcopy}
+
+% To import classical math notation used
+\input{mathnotation.tex}
+% Package for date and time presentation
+\usepackage{datetime}
+\newcommand{\datation}{\today, \xxivtime}
+
+\def\full{0}        % set 1 for a full tech report version
+                    % set 0 for submission version
+\def\shownotes{1}   % set 1 for version with author notes
+                    % set 0 for no notes
+\def\anon{1}        % set 1 to anonymize
+                    % set 0 for acks and author names
+
+%%%%%%%  Author Notes %%%%%%%
+%
+\ifnum\shownotes=1
+\newcommand{\authnote}[2]{{ $\ll$\textsf{\footnotesize #1 notes: #2}$\gg$}}
+\else
+\newcommand{\authnote}[2]{}
+\fi
+\newcommand{\Ynote}[1]{{\authnote{Yan}{#1}}}
+\newcommand{\Anote}[1]{{\authnote{Andrius}{#1}}}
+\newcommand{\Nnote}[1]{{\authnote{Narseo}{#1}}}
+\newcommand{\Vnote}[1]{{\authnote{Vijay}{#1}}}
+\newcommand{\Dnote}[1]{{\authnote{Dina}{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\namedref}[2]{#1~\ref{#2}}
+\newcommand{\tableref}[1]{\namedref{Table}{#1}}
+\newcommand{\sectionref}[1]{\namedref{Section}{#1}}
+\newcommand{\appendixref}[1]{\namedref{Appendix}{#1}}
+\newcommand{\theoremref}[1]{\namedref{Theorem}{#1}}
+\newcommand{\remarkref}[1]{\namedref{Remark}{#1}}
+\newcommand{\definitionref}[1]{\namedref{Definition}{#1}}
+\newcommand{\figureref}[1]{\namedref{Figure}{#1}}
+\newcommand{\lemmaref}[1]{\namedref{Lemma}{#1}}
+\newcommand{\claimref}[1]{\namedref{Claim}{#1}}
+\newcommand{\propositionref}[1]{\namedref{Proposition}{#1}}
+\newcommand{\constructionref}[1]{\namedref{Construction}{#1}}
+\newcommand{\corollaryref}[1]{\namedref{Corollary}{#1}}
+\newcommand{\equationref}[1]{\namedref{Equation}{#1}}
+%
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{obs}[theorem]{Observation}
+%
+
+
+\providecommand{\vs}{vs. }
+\providecommand{\ie}{\emph{i.e.,} }
+\providecommand{\eg}{\emph{e.g.,} }
+\providecommand{\cf}{\emph{cf.,} }
+\providecommand{\resp}{\emph{resp.,} }
+\providecommand{\etal}{\emph{et al.}}   %Removed trailing space here; usually want non-breaking space with following reference
+\providecommand{\etc}{\emph{etc.}}      % No trailing space here either
+\providecommand{\mypara}[1]{\smallskip\noindent\emph{#1} }
+\providecommand{\myparab}[1]{\smallskip\noindent\textbf{#1} }
+\providecommand{\myparasc}[1]{\smallskip\noindent\textsc{#1} }
+\providecommand{\para}{\smallskip\noindent}
+
+\newtheorem{axiom}{{\bf  Axiom}}
+\newtheorem{defin}{{\bf  Definition}}
+\newtheorem{proposition}{Proposition}
+
+\usepackage{enumitem}
+\setlist{nolistsep}
+
+%Model parameters
+
+\usepackage[breaklinks=true]{hyperref}
+\frenchspacing
+\begin{document}
+
+%don't want date printed
+\date{}
+
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\title{noTCP: do not extend, repurpose}
+\ifnum\anon=1
+\author{[Paper: \#XXX]}% \hspace{0.2cm} \ampmtime ]}
+\else
+\numberofauthors{2}
+\author{
+\alignauthor Andrius Aucinas\\
+\affaddr{University of Cambridge} 
+\and
+\alignauthor Jon Crowcroft\\
+\affaddr{University of Cambridge}
+}
+\fi
+%for single author (just remove % characters)
+
+    
+% end author
+\maketitle
+% Use the following at camera-ready time to suppress page numbers.
+% Comment it out when you first submit the paper for review.
+%\thispagestyle{empty}
+\begin{abstract}
+Too abstract.
+\end{abstract} 
+
+\section{Introduction}
+\label{section:intro}
+
+Extensibility of the Internet has been not like originally envisioned for a long time now, starting with IP layer and extending the \emph{narrow waist} to TCP or even HTTP at large. The problem primarily arises from the various middleboxes that perform packet content processing withing the network to improve performance\cite{Kopparty:2002ht,Chakravorty:2003dm}, increase security\cite{Handley:2001vp,Vutukuru:2008fc} and solve address shortage problems and is already well documented~\cite{UntoldMiddlebox2011,Qian:2012bj,Honda:2011ci,Guha:2005tb}.
+
+The lack of extensibility has become acutely noticeable with the development of TCP extensions such as MPTCP and TCPCrypt, the former to make use of multi-homed endpoints, particularly useful in wireless networks and the latter to provide ubiquitous end-to-end traffic encryption. These and other extensions are primarily designed around the limitations of existing middleboxes, but they demonstrate two problems: 1) any extension design is extremely constrained by prevalent middlebox behaviors\cite{Honda:2011ci} and 2) we have already run out of TCP option space, the built-in mechanism for extending TCP.
+
+Problems with the size of option space arise in MPTCP when its options are combined with those of regular TCP and therefore needs to change the semantics of a duplicate ACK~\cite{Handley:vj} and there are efforts to define an alternative control stream to work around the limitation of option space~\cite{Bonaventure:wx}. TCPCrypt goes even further and repurposes the Data portion of TCP segments to exchange cryptographic keys~\cite{Mazieres:uz}.
+
+We propose \emph{noTCP}, an approach complementary to option negotiation which repurposes TCP header fields beyond what is specified but at the same time to be compatible with most of existing, deployed network infrastructure and safely fall-back to vanilla TCP if such modifications fail. At the core of the idea is modification of TCP header fields in a way that is not interfered with by middleboxes or so that such interference can be safely recovered or ignored.
+
+With the focus on cellular and WiFi networks due to their renown middlebox peculiarities, we make the following contributions in this work:
+
+\begin{enumerate}
+    \item Provide an analysis of current networks behavior in the presence of unspecified TCP protocol behavior.
+    \item Propose a robust method to negotiate endpoint-specific behavior across middleboxes.
+    \item Demonstrate that the method is effective across a number of cellular and WiFi networks.
+\end{enumerate}
+
+\section{Candidate protocol changes}
+
+Without using the options field and only changing the meaning of header fields in a backwards-compatible manner we only have a few options:
+\begin{itemize}
+    \item Setting header fields to specific values without setting the corresponding flags so that they do not have a meaning to legacy implementations.
+    \item Assigning one or more of the reserved field bits.
+    \item Defining semantics for specific values of currently valid header fields.
+\end{itemize}
+
+In this section we overview these different options, discuss their pros and cons and show how real networks interact with them. To that end, we have developed a simplified implementation of TCP that exchanges packets in the standard order (three-way handshake, data exchange and connection shutdown) but with various header fields modified to our purposes and without congestion or flow control since we only exchange two data packets once connection has been established (as well as any additional ones generated by middleboxes). We also do not consider packet resegmentation since the goal is to negotiate any endpoint-specific in packet headers so that correct behavior does not depend on how packets are split or coalesced together.
+
+\subsubsection*{Unset Flags}
+
+The only header fields that may or may not have a meaning depending on the corresponding flag are \emph{urgent pointer} and \emph{acknowledgment number},with the latter only not being set at the initial SYN packet.
+
+Urgent pointer is both a good and a bad candidate at the same time: it is already recommended against the use of the urgent mechanism~\cite{Gont:2011vi}, therefore it could be claimed that it is taking up precious space in the TCP header. On the other hand, it is common practice by NIDS to reset the field as it makes it difficult to track the application-layer data~\cite{seolma}. While we witnessed the field to be passed through on many of our studied networks, we also found many that do not (Table...), therefore it is a usable but not our preferred choice.
+
+Acknowledgment field, on the other hand, is double the length and we saw it successfully pass through the networks in more cases. Nevertheless, unless specific value is signaled out of bound between the two endpoints to use the field with TCP Simultaneous Open, only the initiating end can use it and the responding side needs to acknowledge the understanding of it in some other method. 
+
+\subsubsection*{Reserved bits}
+
+The main difficulty with TCP Reserved bits is that there are only 3 bits unallocated if we consider the three ECN bits added over 10 years ago~\cite{Floyd:up,Ely:uc} but still not universally implemented~\cite{}. Any further reserved bit allocation would therefore be extremely difficult.
+
+Nevertheless, there are proposals that make use of them. One of the proposals for reducing Web latency~\cite{Flach:2013uy} suggests sending multiple copies of packets, but to avoid triggering duplicate acknowledgments add a reserved bit to the header. We confirmed the authors observation that middleboxes do not seem to discard packets with non-compliant TCP flags, however we also saw a number of middleboxes to clear such flags, hence interfering with the duplicate acknowledgment.
+
+We tested middlebox behavior by separately setting reserved bits in the handshake (SYN and SYNACK packets) and during data exchange, but we did not observe different behavior for the two cases: the bits were either untouched or cleared, but we did not observe cases when such packets are dropped.
+
+\subsubsection*{Value-specific semantics}
+
+Our remaining option is crafting packets with specific values for port numbers, initial sequence numbers, window size and specific checksum...
+
+\section{Related Work}
+\label{sec:related}
+
+TCP implements an \emph{urgent mechanism} at its core that allows the sending user to stimulate the receiving user to accept some \emph{urgent data}. The mechanism is often quoted as providing ``out-of-bound'' data delivery even though it is specified that it is not a mechanism for sending such data. Furthermore, there are ambiguities regarding the semantics of the urgent pointer, Network Intrusion Detection Systems (NIDS) tend to clear the URG flag and pointer and in general it is recommended against the use of the mechanism~\cite{Gont:2011vi}.
+
+In the context of MPTCP one proposal to add a generic control stream is to map such stream into a separate sequence number space and exchange control data over established subflows, only modifying MPTCP DSS option to use one of the reserved bits to differentiate the control stream from the data stream. It does, however, assume that MPTCP is already deployed as well as that existing deployments will be forwards-compatible with the specification.
+
+Conceptually close to MPTCP's subflows is SCTP's \emph{data chunks}, where a packet can contain multiple TLV (Type-Length-Value) encoded chunks to separate user data and control information. Despite its challenged deployment in the Internet, SCTP over DTLS is being used as the basis of WebRTC data protocol~\cite{Tuexen:wv} and we suggest that such chunking could be used on top of \emph{noTCP} once such behavior has been negotiated as described above.
+
+
+%\section{Conclusion}
+%TBD
+%\input{conclusion}
+
+\ifnum\anon=0
+\subsection*{Acknowledgments}
+
+\fi
+
+
+
+%Only show things we really cite :)
+% \nocite{*}
+{\footnotesize 
+\bibliographystyle{abbrv}
+%\footnotesize
+\bibliography{references}
+}
+
+%\appendix 
+%\input{data}
+
+\end{document}
+
+
+
+
+
+
+

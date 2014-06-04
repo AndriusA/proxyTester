@@ -8,3 +8,7 @@ app/build.xml
 app/*.properties
 app/proguard-project.txt
 app/src/edu/
+paper/*latexmk
+paper/*.out
+paper/*.pdf
+paper/*.synctex.gz
