@@ -16,34 +16,18 @@
 
 package org.smarte.tcptester;
 
-import android.app.Activity;
+import android.view.MenuInflater;
+import android.view.View;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.ActionBar;
+import android.util.Log;
+import android.content.Intent;
+import android.view.MenuItem;
+import android.widget.ImageButton;
+import android.view.Menu;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.os.Bundle;
-import android.view.View;
-import android.util.Log;
-import org.apache.http.client.methods.HttpPost;
-import java.util.ArrayList;
-import org.apache.http.NameValuePair;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.client.ResponseHandler;
-import java.util.List;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.HttpResponse;
-import java.io.UnsupportedEncodingException;
-import java.io.IOException;
-import android.widget.ImageButton;
-import android.widget.ProgressBar;
-import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
-import android.view.MenuInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.support.v7.app.ActionBar;
-import android.content.Intent;
-
-import edu.berkeley.icsi.netalyzr.tests.Test;
 
 public class TcpTester extends ActionBarActivity implements View.OnClickListener 
 {

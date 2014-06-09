@@ -16,46 +16,36 @@
 
 package org.smarte.tcptester;
 
+import android.os.Build;
+import java.util.ArrayList;
+import android.content.pm.PackageManager.NameNotFoundException;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import android.content.Intent;
+import android.content.Context;
+import java.util.concurrent.TimeoutException;
+import android.app.Activity;
+import android.widget.ProgressBar;
+import android.os.AsyncTask;
+import android.widget.TextView;
+import android.net.NetworkInfo;
+import java.util.List;
+import android.content.pm.PackageManager;
+import java.util.Random;
+import android.content.pm.PackageInfo;
+import java.net.SocketException;
+import java.util.Enumeration;
+import android.util.Log;
+import android.net.ConnectivityManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import android.content.pm.PackageManager;
-import java.util.Enumeration;
-import android.net.ConnectivityManager;
-import java.nio.ByteBuffer;
-import java.util.Random;
-import java.net.SocketException;
-import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.os.SystemClock;
-import java.util.List;
-import android.net.NetworkInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.util.Log;
-import java.util.concurrent.TimeoutException;
-import java.net.UnknownHostException;
-import android.os.Build;
-import java.io.IOException;
+
 import com.stericson.RootTools.RootTools;
 import com.stericson.RootTools.execution.Shell;
 import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
 import edu.berkeley.icsi.netalyzr.tests.Test;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.HttpPost;
-import java.io.UnsupportedEncodingException;
-import android.os.AsyncTask;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.client.ResponseHandler;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.content.Intent;
-import android.app.Activity;
 
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
@@ -172,7 +162,6 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
         Log.i(TAG, "Test complete");
-        postDataHttp();
         return Test.TEST_COMPLEX; 
     }
 

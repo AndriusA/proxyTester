@@ -16,48 +16,35 @@
 
 package org.smarte.tcptester;
 
-import android.app.Activity;
-import android.widget.TextView;
-import android.os.Bundle;
-import android.view.View;
-import android.util.Log;
-import org.apache.http.client.methods.HttpPost;
 import java.util.ArrayList;
 import org.apache.http.NameValuePair;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.client.ResponseHandler;
-import java.util.List;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.HttpResponse;
-import java.io.UnsupportedEncodingException;
-import java.io.IOException;
-import android.widget.ImageButton;
-import android.widget.ProgressBar;
-import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
-import android.view.MenuInflater;
+import org.apache.http.client.methods.HttpPost;
 import android.view.Menu;
-import android.view.MenuItem;
-import android.support.v7.app.ActionBar;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.widget.ListView;
-import android.widget.ArrayAdapter;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Collections;
-import android.content.Context;
-import java.util.HashMap;
-import java.util.Set;
-import android.view.ViewGroup;
-import android.view.LayoutInflater;
+import java.io.IOException;
 import android.widget.ImageView;
-
-
-
-import edu.berkeley.icsi.netalyzr.tests.Test;
+import android.content.Context;
+import android.widget.ListView;
+import java.util.HashMap;
+import org.apache.http.impl.client.DefaultHttpClient;
+import android.widget.ArrayAdapter;
+import android.os.AsyncTask;
+import android.widget.TextView;
+import android.net.NetworkInfo;
+import java.util.List;
+import android.view.View;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.message.BasicNameValuePair;
+import java.io.UnsupportedEncodingException;
+import android.view.ViewGroup;
+import org.apache.http.impl.client.BasicResponseHandler;
+import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
+import android.net.ConnectivityManager;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import java.util.Set;
+import android.support.v7.app.ActionBar;
 
 public class TcpTesterResults extends ActionBarActivity 
 {
