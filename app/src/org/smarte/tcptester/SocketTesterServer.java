@@ -172,7 +172,7 @@ public class SocketTesterServer extends Thread {
         boolean result = false;
         lock.lock();
         try {
-            // Log.d(TAG, "Sending message " + RawSocketTester.bytesToHex(msg, msg[0]));
+            // Log.d(TAG, "Sending message " + bytesToHex(msg, msg[0]));
             if (!clientConnected) {
                 Log.d(TAG, "Waiting for client to connect");
                 connected.await();
@@ -207,7 +207,7 @@ public class SocketTesterServer extends Thread {
             if (bytesRead > 0) {
                 posOffset += bytesRead;
                 totalBytesRead += bytesRead;
-                // Log.d(TAG, "Receive data from socket, bytesRead = " + bytesRead + ", " + RawSocketTester.bytesToHex(buffer, totalBytesRead));
+                // Log.d(TAG, "Receive data from socket, bytesRead = " + bytesRead + ", " + bytesToHex(buffer, totalBytesRead));
                 byte cmdLen = buffer[0];
                 if (cmdLen == totalBytesRead) {
                     // Log.d(TAG, "Full command received");
@@ -222,6 +222,17 @@ public class SocketTesterServer extends Thread {
 
     public String getLocalSocketAddress() {
         return server.getLocalSocketAddress().getName();
+    }
+
+    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes, byte length) {
+        char[] hexChars = new char[length * 2];
+        for ( int j = 0; j < length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 
 }

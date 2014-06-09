@@ -41,61 +41,27 @@ import android.view.MenuInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.support.v7.app.ActionBar;
-import android.content.Intent;
 
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 
-public class TcpTester extends ActionBarActivity implements View.OnClickListener 
+public class TcpTesterAbout extends ActionBarActivity 
 {
     public static final String TAG = "TCPTester";
-    private ProgressBar mProgress;
-    private TextView mProgressText;
 
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.form);
-        int buttonId = R.id.connect;
-        ImageButton btn = (ImageButton) findViewById(buttonId);
-        mProgress = (ProgressBar)findViewById(R.id.testProgress);
-        mProgressText = (TextView)findViewById(R.id.progressText);
-        btn.setOnClickListener(this);
-
+        setContentView(R.layout.about);
+        
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.show();
     }
 
     @Override
-    public void onClick(View v) {
-        new RawSocketTester(this, mProgress, mProgressText).execute();
-    }
-
-    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu items for use in the action bar
-        Log.d(TAG, "Options menu created");
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.layout.main_activity_actions, menu);
         return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle presses on the action bar items
-        switch (item.getItemId()) {
-            case R.id.action_about:
-                openAbout();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
-
-    private void openAbout() {
-        Intent intent = new Intent(this, TcpTesterAbout.class);
-        startActivity(intent);
-    }
+    }  
     
 }

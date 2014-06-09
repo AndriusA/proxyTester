@@ -17,8 +17,12 @@
 package org.smarte.tcptester;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import android.os.Parcelable;
+import android.os.Parcel;
 
-public class TCPTest {
+
+public class TCPTest implements Parcelable {
     public static final int TEST_GET_GLOBAL_IP = 21;
 
 
@@ -73,6 +77,57 @@ public class TCPTest {
         this.extras = new byte[1];
         this.extras[0] = (byte)extras;
     }
+
+    public int describeContents() {
+        return 0;
+    }
+
+    private TCPTest(Parcel in) {
+        name = in.readString();
+        opcode = in.readByte();
+        result = in.readByte() == 1 ? true : false;
+        // in.readByteArray(extras);
+        byte[] tempSrc = new byte[4];
+        in.readByteArray(tempSrc);
+        try {
+            src = InetAddress.getByAddress(tempSrc);
+        } catch (UnknownHostException e) {
+            src = null;
+        }
+        srcPort = in.readInt();
+
+        byte[] tempDst = new byte[4];
+        in.readByteArray(tempDst);
+        try {
+            dst = InetAddress.getByAddress(tempDst);
+        } catch (UnknownHostException e) {
+            dst = null;
+        }
+        dstPort = in.readInt();
+    }
+
+    public void writeToParcel(Parcel out, int flags) {
+        out.writeString(name);
+        out.writeByte(opcode);
+        out.writeByte((byte) (result ? 1 : 0));
+        // out.writeByteArray(extras);
+        out.writeByteArray(src.getAddress());
+        out.writeInt(srcPort);
+        out.writeByteArray(dst.getAddress());
+        out.writeInt(dstPort);
+    }
+
+    public static final Parcelable.Creator<TCPTest> CREATOR
+            = new Parcelable.Creator<TCPTest>() {
+        public TCPTest createFromParcel(Parcel in) {
+            return new TCPTest(in);
+        }
+
+        public TCPTest[] newArray(int size) {
+            return new TCPTest[size];
+        }
+     };
+
     public String toString() {
         String ret = " " + name 
             + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 

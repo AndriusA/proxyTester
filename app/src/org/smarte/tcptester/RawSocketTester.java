@@ -43,8 +43,23 @@ import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
 import edu.berkeley.icsi.netalyzr.tests.Test;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.methods.HttpPost;
+import java.io.UnsupportedEncodingException;
+import android.os.AsyncTask;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.client.ResponseHandler;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.content.Intent;
+import android.app.Activity;
 
-public class RawSocketTester extends Test
+
+
+public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
     public static final String TAG = "TCPTester";
     private static final String TESTER_BINARY = "tcptester";
@@ -52,16 +67,20 @@ public class RawSocketTester extends Test
         "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP && iptables --list";
 
     private SocketTesterServer mTesterServer;
-    private Context mContext;
+    private Context mActivity;
     
     private InetAddress mServerAddress;
     private int[] mServerPorts; 
     private ArrayList<TCPTest> mResults;
+    private ProgressBar mProgress;
+    private TextView mProgressText, mSubmittedResults;
 
-    public RawSocketTester(String name, Context context) {
-        super(name);
-        mContext = context;
+    public RawSocketTester(Activity activity, ProgressBar progress, TextView progressText) {
+        super();
+        mActivity = activity;
         mResults = new ArrayList<TCPTest>();
+        mProgress = progress;
+        mProgressText = progressText;
     }
 
     public void init() {
@@ -75,9 +94,10 @@ public class RawSocketTester extends Test
         mServerPorts = new int[]{80, 443, 993, 8000, 5258, 6969};
     }    
 
-    public int runImpl() throws IOException {
-        if (!RootTools.hasBinary(mContext, TESTER_BINARY)) {
-            if (RootTools.isRootAvailable() && installNativeBinary(mContext)) {
+    protected Integer doInBackground(Void... none) {
+        init();
+        if (!RootTools.hasBinary(mActivity, TESTER_BINARY)) {
+            if (RootTools.isRootAvailable() && installNativeBinary(mActivity)) {
                 Log.d(TAG, "Native binary installed");
             } else {
                 Log.d(TAG, "Installing binary failed");
@@ -92,7 +112,7 @@ public class RawSocketTester extends Test
         if (mServerAddress == null) {
             return Test.TEST_ERROR | Test.TEST_ERROR_UNKNOWN_HOST;
         }
-        ConnectivityManager connMgr = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
+        ConnectivityManager connMgr = (ConnectivityManager) mActivity.getSystemService(mActivity.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if ( networkInfo == null || !networkInfo.isConnected() ) {
             Log.d(TAG, "Fatal: Device is currently offline");
@@ -104,11 +124,16 @@ public class RawSocketTester extends Test
         String address = mTesterServer.getLocalSocketAddress();
         Log.d(TAG, "Local socket address: " + address);
         // Run binary in background to make root shell available for other commands
-        RootTools.runBinary(mContext, TESTER_BINARY, address+" &");
+        RootTools.runBinary(mActivity, TESTER_BINARY, address+" &");
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
+        mProgress.setMax(tests.size());
+        int testNo = 0;
         for (TCPTest test : tests) {
-            Log.d(TAG, "Running test " + test.toString());
+            if (isCancelled()) break;
+            testNo++;
+            publishProgress(1, testNo, tests.size());
+            Log.d(TAG, "Running test " + test.name);
 
             boolean iptablesAdded = false;
             try {
@@ -143,6 +168,8 @@ public class RawSocketTester extends Test
             Shell.closeAll();
         } catch (InterruptedException e) {
             Log.e(TAG, "LocalServerSocket thread interrupted", e);
+        } catch (IOException e) {
+            Log.e(TAG, "IOException closing all root shells", e);
         }
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
@@ -150,15 +177,23 @@ public class RawSocketTester extends Test
         return Test.TEST_COMPLEX; 
     }
 
-    public String getPostResults() {
-        String ret = "";
-        ConnectivityManager connMgr = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        ret += "Network info: " + networkInfo.toString();
-        for (TCPTest result : mResults) {
-            ret += result.toString();
+    protected void onProgressUpdate(Integer... progress) {
+         mProgress.incrementProgressBy(progress[0]);
+         mProgressText.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
+     }
+
+    protected void onPostExecute(Integer result) {
+        super.onPostExecute(result);
+        Intent intent = new Intent(mActivity, TcpTesterResults.class);
+        if (result == Test.TEST_COMPLEX) {
+            intent.putExtra("status", "success");
+        } else if (result == Test.TEST_PROHIBITED) {
+            intent.putExtra("status", "prohibited");
+        } else {
+            intent.putExtra("status", "failed");
         }
-        return ret;
+        intent.putParcelableArrayListExtra("results", mResults);
+        mActivity.startActivity(intent);
     }
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
@@ -170,17 +205,17 @@ public class RawSocketTester extends Test
         basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
         basicTests.add(new TCPTest("ACK-checksum", 7));
         // basicTests.add(new TCPTest("URG-URG", 8));
-        basicTests.add(new TCPTest("URG-checksum", 9));
-        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
+        // basicTests.add(new TCPTest("URG-checksum", 9));
+        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        // // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        // // basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         // TODO: add seed in production
@@ -312,16 +347,5 @@ public class RawSocketTester extends Test
         }
         // Log.d(TAG, "iptables rule disabled");
         return true;
-    }
-
-    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
-    public static String bytesToHex(byte[] bytes, byte length) {
-        char[] hexChars = new char[length * 2];
-        for ( int j = 0; j < length; j++ ) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = hexArray[v >>> 4];
-            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-        }
-        return new String(hexChars);
     }
 }

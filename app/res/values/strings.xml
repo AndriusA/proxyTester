@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TCP testsuite</string>
-    <string name="app">TCP testsuite</string>
+
+    <string name="app_name">TCPTester</string>
+    <string name="app">TCPTester</string>
 
     <string name="address">Server Address:</string>
     <string name="port">Server Port:</string>
@@ -11,4 +12,18 @@
     <string name="connecting">ToyVPN is connecting...</string>
     <string name="connected">ToyVPN is connected!</string>
     <string name="disconnected">ToyVPN is disconnected!</string>
+
+    <string name="action_about">About</string>
+    <string name="action_results">Test results</string>
+
+    <string name="about_description">TCP Testsuite performs in-depth analysis of your path of connectivity to the Internet, focusing on the interference of middleboxes (NATs, proxies, firewalls) with TCP traffic. \n It forms part of a survey of the state of the widely used netwoks to inform further development of the TCP protocol and extensions.</string>
+    <string name="about_slogan">Defeat the middleboxes</string>
+    <string name="brought_by">Developed at the University of Cambridge</string>
+
+    <string name="test_finished_success">Tests sucessfully finished!</string>
+    <string name="test_finished_prohibited">Test execution prohibited! Do you have root?</string>
+    <string name="test_finished_failed">Tests failed for unkown reason... Sorry!</string>
+    <string name="results_posted">Results have been posted. Thank you!</string>
+    <string name="results_post_failed">Posting results failed... Please try again...</string>
+    <string name="your_IP">Your Global IP</string>
 </resources>
