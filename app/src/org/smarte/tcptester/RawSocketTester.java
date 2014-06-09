@@ -57,8 +57,6 @@ import android.widget.TextView;
 import android.content.Intent;
 import android.app.Activity;
 
-
-
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
     public static final String TAG = "TCPTester";
@@ -174,6 +172,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
         Log.i(TAG, "Test complete");
+        postDataHttp();
         return Test.TEST_COMPLEX; 
     }
 

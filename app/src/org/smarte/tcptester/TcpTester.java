@@ -43,7 +43,6 @@ import android.view.MenuItem;
 import android.support.v7.app.ActionBar;
 import android.content.Intent;
 
-
 import edu.berkeley.icsi.netalyzr.tests.Test;
 
 public class TcpTester extends ActionBarActivity implements View.OnClickListener 
