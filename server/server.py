@@ -263,4 +263,4 @@ processor.start()
 sender.daemon = True
 sender.start()
 
-sniff(prn=receive_queue.put, filter="tcp and dst 192.95.61.161 and (dst port 6969 or dst port 80 or dst port 443 or dst port 8080 or dst port 8000 or dst port 445 or dst port 993 or dst port 139 or dst port 5258)", store=0)
+sniff(prn=receive_queue.put, filter="tcp and dst 192.95.61.161 and (dst port 6969 or dst port 80 or dst port 443 or dst port 8080 or dst port 8000 or dst port 445 or dst port 993 or dst port 139 or dst port 5228)", store=0)

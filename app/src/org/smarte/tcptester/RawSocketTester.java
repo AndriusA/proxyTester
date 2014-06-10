@@ -78,8 +78,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         } catch (UnknownHostException e) {
             mServerAddress = null;
         }
-        // TODO: also add other common ones: 80 8000 8080
-        mServerPorts = new int[]{80, 443, 993, 8000, 5258, 6969};
+        mServerPorts = new int[]{80, 443, 993, 8000, 5228, 6969};
     }    
 
     protected Integer doInBackground(Void... none) {
@@ -91,6 +90,8 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
                 Log.d(TAG, "Installing binary failed");
                 return Test.TEST_PROHIBITED;
             }
+        } else {
+            Log.d(TAG, "Native binary already exists");
         }
 
         if (!RootTools.isRootAvailable() || !RootTools.isAccessGiven()) {
@@ -192,22 +193,21 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         basicTests.add(new TCPTest("plain-URG", 5));
         basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
         basicTests.add(new TCPTest("ACK-checksum", 7));
-        // basicTests.add(new TCPTest("URG-URG", 8));
-        // basicTests.add(new TCPTest("URG-checksum", 9));
-        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // // basicTests.add(new TCPTest("Reserved-est", 12, 8));
-        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
+        basicTests.add(new TCPTest("URG-URG", 8));
+        basicTests.add(new TCPTest("URG-checksum", 9));
+        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
-        // TODO: add seed in production
-        Random rng = new Random();
+        Random rng = new Random(System.currentTimeMillis());
         List<InetAddress> localAddresses = getOwnInetAddresses();
         completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 443, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
 

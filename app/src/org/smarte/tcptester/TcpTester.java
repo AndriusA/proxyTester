@@ -58,7 +58,6 @@ public class TcpTester extends ActionBarActivity implements View.OnClickListener
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu items for use in the action bar
-        Log.d(TAG, "Options menu created");
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.layout.main_activity_actions, menu);
         return super.onCreateOptionsMenu(menu);

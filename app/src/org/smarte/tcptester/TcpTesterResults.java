@@ -150,11 +150,12 @@ public class TcpTesterResults extends ActionBarActivity
 
         TCPTestAggregate(Integer dstPort, Integer passed, Integer total) {
             this.dstPort = dstPort;
-            if (passed/total > 0.8) {
+            double successRate = ((double) passed) / total;
+            if (successRate > 0.7) {
                 this.result = CLEAR;
                 this.description = "All traffic allowed";
             }
-            else if (passed/total > 0.01) {
+            else if (successRate > 0.01) {
                 this.result = FILTERED;
                 this.description = "Some extensions filtered";
             }

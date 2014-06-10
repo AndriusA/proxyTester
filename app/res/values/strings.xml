@@ -16,7 +16,7 @@
     <string name="action_about">About</string>
     <string name="action_results">Test results</string>
 
-    <string name="about_description">TCP Testsuite performs in-depth analysis of your path of connectivity to the Internet, focusing on the interference of middleboxes (NATs, proxies, firewalls) with TCP traffic. \n It forms part of a survey of the state of the widely used netwoks to inform further development of the TCP protocol and extensions.</string>
+    <string name="about_description">TCP Testsuite performs in-depth analysis of your path of connectivity to the Internet, focusing on the interference of middleboxes (NATs, proxies, firewalls) with TCP traffic. \n It forms part of a survey of the state of the widely used networks to inform further development of the TCP protocol and extensions.</string>
     <string name="about_slogan">Defeat the middleboxes</string>
     <string name="brought_by">Developed at the University of Cambridge</string>
 
