@@ -98,7 +98,7 @@ public class TcpTesterResults extends ActionBarActivity
                 for (int i = 0; i < 4; i++) {
                     ip += Integer.toString((int)(result.extras[i] & 0xFF)) + (i < 3 ? "." : "");
                 }
-                globalIP.setText(R.string.your_IP + " " + ip);
+                globalIP.setText(getString(R.string.your_IP) + " " + ip);
                 continue;
             }
             if (result.result) {

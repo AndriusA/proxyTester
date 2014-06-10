@@ -86,7 +86,9 @@ public class TCPTest implements Parcelable {
         name = in.readString();
         opcode = in.readByte();
         result = in.readByte() == 1 ? true : false;
-        // in.readByteArray(extras);
+        int extrasLength = in.readInt();
+        extras = new byte[extrasLength];
+        in.readByteArray(extras);
         byte[] tempSrc = new byte[4];
         in.readByteArray(tempSrc);
         try {
@@ -110,7 +112,8 @@ public class TCPTest implements Parcelable {
         out.writeString(name);
         out.writeByte(opcode);
         out.writeByte((byte) (result ? 1 : 0));
-        // out.writeByteArray(extras);
+        out.writeInt(extras.length);
+        out.writeByteArray(extras);
         out.writeByteArray(src.getAddress());
         out.writeInt(srcPort);
         out.writeByteArray(dst.getAddress());

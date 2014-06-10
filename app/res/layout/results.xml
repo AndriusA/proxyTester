@@ -20,17 +20,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text=""
-        android:id="@+id/yourIP"
+        android:id="@+id/resultsPosted"
         android:layout_below="@+id/testFinished"
+        android:layout_centerHorizontal="true"
     />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text=""
-        android:id="@+id/resultsPosted"
-        android:layout_below="@+id/yourIP"
-        android:layout_centerHorizontal="true"
+        android:id="@+id/yourIP"
+        android:layout_below="@+id/resultsPosted"
     />
 
     <TextView
@@ -38,7 +38,7 @@
         android:layout_height="wrap_content"
         android:text="Aggregate results per port number:"
         android:id="@+id/resultsTitle"
-        android:layout_below="@+id/resultsPosted"
+        android:layout_below="@+id/yourIP"
         android:layout_centerHorizontal="true"
     />
 
