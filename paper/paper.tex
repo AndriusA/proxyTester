@@ -175,39 +175,39 @@ Acknowledgment field, on the other hand, is double the length and we saw it succ
 
 The main difficulty with TCP Reserved bits is that there are only 3 bits unallocated if we consider the three ECN bits added over 10 years ago~\cite{Floyd:up,Ely:uc} but still not universally implemented~\cite{}. Any further reserved bit allocation would therefore be extremely difficult.
 
-Nevertheless, there are proposals that make use of them. One of the proposals for reducing Web latency~\cite{Flach:2013uy} suggests sending multiple copies of packets, but to avoid triggering duplicate acknowledgments add a reserved bit to the header. We confirmed the authors observation that middleboxes do not seem to discard packets with non-compliant TCP flags, however we also saw a number of middleboxes to clear such flags, hence interfering with the duplicate acknowledgment of the proposed scheme.
+Nevertheless, there are proposals that make use of them. One of the proposals for reducing Web latency~\cite{Flach:2013uy} suggests sending multiple copies of packets, but to avoid triggering duplicate acknowledgments add a reserved bit to the header. We confirmed the authors observation that middleboxes do not seem to discard packets with non-compliant TCP flags, however we also saw a number of middleboxes to clear such flags, hence interfering with the duplicate acknowledgment of the proposed scheme. Due to the problem with reserved bit allocation we would recommend using mechanisms we discuss later.
 
 \subsubsection*{Value-specific semantics}
 
-Our remaining option is crafting packets with specific values for initial sequence numbers, window size or a specific checksum value. Initial sequence numbers, however, must be hard to predict as they provide a measure (however weak) of security and until a stronger one (such as TCPCrypt) is universally adopted adding any information to the field in a way that is easily decoded by the receiver weakens security.
+Our remaining class of options, and by far the biggest, is defining protocol semantics based on specific values of certain header fields. It would necessitate generating crafting packets with specific values for initial sequence numbers, window size or a specific checksum value, and we posit that it would be an acceptable choice if such solution is deployable in today's network and can be implemented efficiently.
+
+Initial sequence numbers, must be hard to predict as they provide a measure (however weak) of security and until a stronger one (such as TCPCrypt) is universally adopted adding any information to the field in a way that is easily decoded by the receiver weakens security.
 
 Window size field is potentially a better candidate, especially if used only during connection setup phase, since data is not typically transmitted during the handshake. We could further claim that even during data exchange a few of the least-significant bits could be sacrificed for carrying other information, however that would prevent flow control from operating properly. Higher-order bits could instead be given up when window scaling option is used to compensate for the decrease of signaled window size, but for every such bit the maximum window would be halved, having negative effects for more capable clients connected though high capacity links. Finally, we observed many middleboxes to modify the field and there is a risk of the middleboxes using the initially negotiated one for assigning resources for the duration of the connection~\cite{}.
 
-There are multiple benefits of using the checksum field. Firstly, it is (only) used for error detection as opposed to other fields that govern protocol behavior and is either not always necessary due to the layered design of the OSI stack (when error detection is done at the layer below or above), or can be replaced with extensions' separate (MPTCP DSS checksum) or even stronger (TCPCrypt MAC) mechanisms. Secondly, checksum operations are efficient as they only involve one's complement addition. And finally, it is possible to generate checksums in a way that the intended value can recovered by the receiving end after traversing common types of middleboxes that recompute the checksum.
+There are multiple benefits of using the checksum field. Firstly, it is (only) used for error detection as opposed to other fields that govern protocol behavior and is either not always necessary due to the layered design of the OSI stack (when error detection is done at the layer below or above), or can be replaced with extensions' separate (MPTCP DSS checksum) or even stronger (TCPCrypt MAC) mechanisms. Secondly, checksum operations are efficient as they only involve one's complement addition. And finally, it is possible to generate checksums in a way that the intended value can recovered by the receiving end after traversing common types of middleboxes that recompute the checksum as we discuss in the following sections.
 
-In traditional NATs~\cite{Egevang:tu} checksum recomputation is very simple: subtract the old header fields from the checksum and add the new ones to minimize the resource use. In our sample X networks only do that, as indicated by the fact that they allow packets with incorrect checksums through towards the endpoint (otherwise the packet would either be dropped or a valid checksum would be recomputed). It is not always the case and another alternative is to add payload to a packet to make checksum a specific value. It can only be done when the receiving end is already expecting it, since it should not pass such payload up to the layer above, therefore can only be used from SYNACK onwards. A bigger issue here is that middleboxes do not always respect the standard and simply drop such packets even though the standard clearly allows handshake packets to contain payload~\cite{Postel:3EDyoxP_,Chu:2011tn}:
-
-\begin{quotation}
-	Although these
-	examples do not show connection synchronization using data-carrying
-	segments, this is perfectly legitimate...
-\end{quotation}
 
 \section{Methodology}
 
-To test what works on current networks we have developed a simplified implementation of TCP that exchanges packets in the standard order (three-way handshake, data exchange and connection shutdown) but with various header fields modified to our purposes and without congestion or flow control since we only exchange two data packets once connection has been established (as well as any additional ones generated by middleboxes). We also currently do not consider packet resegmentation since the goal is to negotiate any endpoint-specific in packet headers so that correct behavior does not depend on how packets are split or coalesced together.
+To test what works on current networks we have developed a simplified implementation of TCP that exchanges packets in the standard order (three-way handshake, data exchange and connection shutdown) but with various header fields modified to our purposes.
+
+The test has been implemented as an Android application and distributed through the \emph{Google Play Store} to collect data from volunteers. The overall structure of the tool is relatively straightforward:
+\begin{itemize}
+    \item UI which reports aggregated results to the end-users, sends results to the reporting server and manages the overall flow of the tests.
+    \item Native implementation of the simplified TCP stack using Raw Unix sockets (\emph{SOCK\_RAW}) to allow us to generate packets at the network layer. This also meant having to drop RST packets generated by the kernel network stack during the test in response to incoming packets associated with connections it is not aware of - packets are delivered to both the raw socket and the kernel network stack.
+    \item Similar server implementation that generates specific answers to incoming packets based on header and payload values.
+\end{itemize}
+
+Potential limitations of our methodology include that we do not consider packet resegmentation since the goal is to negotiate any endpoint-specific in packet headers so that correct behavior does not depend on how packets are split or coalesced together. To make sure that it does not happen all our packets contain minimal amount of payload (up to 16 bytes during data exchange) and data exchange only consists of a single message sent each way, in addition to any extra acknowlegements generated by middleboxes. Due to the same reason we also do not take into account congestion control.
 
 \section{Network cahracteristics}
 \label{sec:network}
 
-In this section we look at the different network behaviours as observed by our testing tool.
-
-We tested middlebox behavior by separately setting reserved bits in the handshake (SYN and SYNACK packets) and during data exchange, but we did not observe different behavior for the two cases: the bits were either untouched or cleared, but we did not observe cases when such packets are dropped.
-
 \begin{table*}[t]
 {\small
 \begin{center}
-\begin{tabular}{| l | >{\centering\arraybackslash}m{0.8cm} | >{\centering\arraybackslash}m{0.9cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
+\begin{tabular}{| l | >{\centering\arraybackslash}m{0.8cm} | >{\centering\arraybackslash}m{0.9cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
 \hline
     \textbf{Net ID} & \textbf{No filter} & \textbf{Global IP}   & \textbf{Port-specific} & \textbf{Validate checksum} & \textbf{Drop S/A data} & \textbf{Normalize ACK}  & \textbf{Normalize URG} & \textbf{Normalize Reserved} & \textbf{Remap Seq.} \\ \hline \hline
     % Univ Helsinki WiFi
@@ -225,13 +225,28 @@ We tested middlebox behavior by separately setting reserved bits in the handshak
 \end{tabular}
 \end{center}
 }
-\caption{Network behaviour observed through tests generating custom TCP packets}
+\caption{Network behaviour observed through tests generating custom TCP packets. A single checkmark means that particular behaviour was observed or in case of normalization the field was reset or replaced with a valid value. Double checkmark means that specific type of packet was discarded. A dash means that we observed different cases on the same network.}
 \label{tab:networks}
 \end{table*}
 
+We show our collected results in Table~\ref{tab:networks}. Since we were focusing on mobile applications, we collected data across a number of public, residential and university WiFi networks and cellular networks in XX different countries. The results outline for which networks we did not see any filtering, which ones discarded packets with invalid checksums, normalised particular fields (either dropped packets or reset to different values) and what type of mapping did NATs perform - only port number remapping or also changed sequence numbers.
+
+Checksum behaviour was particularly interesting. In traditional NATs~\cite{Egevang:tu} checksum recomputation is very simple: subtract the old header fields from the checksum and add the new ones to minimize the resource use. In our sample X networks only do that, as indicated by the fact that they allow packets with incorrect checksums through towards the endpoint (otherwise the packet would either be dropped or a valid checksum would be recomputed). It is not always the case and another alternative is to add payload to a packet to make checksum a specific value. It can only be done when the receiving end is already expecting it, since it should not pass such payload up to the layer above, therefore can only be used from SYNACK onwards. A bigger issue here is that middleboxes do not always respect the standard and simply drop such packets even though the standard clearly allows handshake packets to contain payload~\cite{Postel:3EDyoxP_,Chu:2011tn}:
+
+\begin{quotation}
+    Although these examples do not show connection synchronization using data-carrying segments, this is perfectly legitimate...
+\end{quotation}
+
+We also tested middlebox itneraction with reserved header bits. We separated our tests to handshake and data exchange parts as well as set each bit individually, however we did not observe different behavior for these: the bits were either passwd through or cleared at both phases, but we did not observe cases when such packets are dropped.
+
+
 \subsection{Port-specific middlebox behavior}
 
-Interestingly, on certain networks with what appears to be proxies deployed the behavior is dependent on destination port used. In particular, they appear to be configured to allow traffic to commonly used SSL ports (443, 993) pass through unmodified. In fact, most of our attempted modifications are allowed through with the exception of packets that do not have a valid checksum being dropped.
+One column of our table of observations is especially interesting -- port-specific behavior. We have only observed it on one network, but the particular network appears to be configured to allow traffic to commonly used SSL ports (443, 993) pass through unmodified. In fact, most of our attempted modifications are allowed through with the exception of packets that do not have a valid checksum being dropped. There may be other ports configured to allow unmodified traffic through, but we only focused on commonly used ports.
+
+In addition to noting that our traffic was not encrypted but only sent to a specific destination port, it is also important to say that an increasing proportion of traffic is served over SSL. A commerciall deployed opt-in HTTP accelerator reports the proportion of HTTPS requests to be close to that of HTTP, although varying with time~\footnote{http://db.awazza.com/users/global/}. 
+
+All other traffic, however, is intercepted at the middlebox which we have separately confirmed to be a Bytemobile proxy~\footnote{Citrix Bytemobile - is it appropriate to reference this case accurately?} and it terminates clients' connections, establishing new ones to the destination, as well as adding options not present in original packets, changing window size, assigning new source port numbers sequentially and even postponing handshaking until the handshake with the client is complete.
 
 \section{Protocol negotiation}
 
