@@ -185,7 +185,7 @@ public class TcpTesterResults extends ActionBarActivity
             ImageView testResult = (ImageView) convertView.findViewById(R.id.testResult);
             // Populate the data into the template view using the data object
             testPort.setText(Integer.toString(result.dstPort));
-            testName.setText(result.description);
+            testName.setText("\t"+result.description);
             if (result.result == result.CLEAR)
                 testResult.setImageResource(R.drawable.ic_action_accept);
             if (result.result == result.FILTERED)
