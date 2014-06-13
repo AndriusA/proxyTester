@@ -52,7 +52,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     public static final String TAG = "TCPTester";
     private static final String TESTER_BINARY = "tcptester";
     private static final String IPTABLES_CMD = 
-        "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP && iptables --list";
+        "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP";
 
     private SocketTesterServer mTesterServer;
     private Context mActivity;
