@@ -47,11 +47,7 @@
 \else
 \newcommand{\authnote}[2]{}
 \fi
-\newcommand{\Ynote}[1]{{\authnote{Yan}{#1}}}
 \newcommand{\Anote}[1]{{\authnote{Andrius}{#1}}}
-\newcommand{\Nnote}[1]{{\authnote{Narseo}{#1}}}
-\newcommand{\Vnote}[1]{{\authnote{Vijay}{#1}}}
-\newcommand{\Dnote}[1]{{\authnote{Dina}{#1}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -207,21 +203,22 @@ Potential limitations of our methodology include that we do not consider packet 
 \begin{table*}[t]
 {\small
 \begin{center}
-\begin{tabular}{| l | >{\centering\arraybackslash}m{0.8cm} | >{\centering\arraybackslash}m{0.9cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
+\begin{tabular}{| l | >{\centering\arraybackslash}m{0.8cm} | >{\centering\arraybackslash}m{0.8cm} | >{\centering\arraybackslash}m{0.9cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
 \hline
-    \textbf{Net ID} & \textbf{No filter} & \textbf{Global IP}   & \textbf{Port-specific} & \textbf{Validate checksum} & \textbf{Drop S/A data} & \textbf{Normalize ACK}  & \textbf{Normalize URG} & \textbf{Normalize Reserved} & \textbf{Remap Seq.} \\ \hline \hline
+    \textbf{Net ID} & \textbf{Country} & \textbf{No filter} & \textbf{Global IP}   & \textbf{Port-specific} & \textbf{Validate checksum} & \textbf{Drop S/A data} & \textbf{Normalize ACK}  & \textbf{Normalize URG} & \textbf{Normalize Reserved} & \textbf{Remap Seq.} \\ \hline \hline
     % Univ Helsinki WiFi
-    WiFi education 1 &                   &                      &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
+    WiFi edu 1      & FI               &                    &                      &                        & \checkmark \checkmark      &                        &                         &                        &                             &                     \\ \hline
     % Eduroam
-    WiFi education 2 &                   & \checkmark           &                        &                            & \checkmark             &                         & \checkmark \checkmark  &                             & \checkmark          \\ \hline
+    WiFi edu 2      & UK               &                    & \checkmark           &                        &                            & \checkmark             &                         & \checkmark \checkmark  &                             & \checkmark          \\ \hline
     % wgb
-    WiFi public 1      & \checkmark      &                      &                        &                            &                        &                         &                        &                             &                     \\ \hline
-    % Finland internet.saunalahti
-    Cellular Finland 1 & \checkmark      &                      &                        &                            &                        &                         &                        &                             &                     \\ \hline
+    WiFi pub 1      & UK               & \checkmark         &                      &                        &                            &                        &                         &                        &                             &                     \\ \hline
     % Virgin home
-    WiFi residential 1 &                 &                      &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
+    WiFi res 1      & UK               &                    &                      &                        & \checkmark \checkmark      &                        &                         &                        &                             &                     \\ \hline
+    \hline
+    % Finland internet.saunalahti
+    Cellular 1      & FI               & \checkmark      &                      &                        &                            &                        &                         &                        &                             &                     \\ \hline
     % GiffGaff
-    Cellular UK 1      &                 &                      &  \checkmark (443, 993) & -                          & -                      & -                       & -                      & -                           & -                   \\ \hline            
+    Cellular 2      & UK               &                 &                      &  \checkmark (443, 993) & -                          & -                      & -                       & -                      & -                           & -                   \\ \hline            
 \end{tabular}
 \end{center}
 }
@@ -229,15 +226,15 @@ Potential limitations of our methodology include that we do not consider packet 
 \label{tab:networks}
 \end{table*}
 
-We show our collected results in Table~\ref{tab:networks}. Since we were focusing on mobile applications, we collected data across a number of public, residential and university WiFi networks and cellular networks in XX different countries. The results outline for which networks we did not see any filtering, which ones discarded packets with invalid checksums, normalised particular fields (either dropped packets or reset to different values) and what type of mapping did NATs perform - only port number remapping or also changed sequence numbers.
+We show our collected results in Table~\ref{tab:networks}. Since we were focusing on mobile applications, we collected data across a number of public, residential and university WiFi networks and cellular networks in XX different countries: UK, USA, Finland (pending: Turkey, India, Lithuania, Spain...). We picked the most important dimensions that show what modifications to the protocol have the highest chance of being successull across the largest number of networks. In particular, the results include which networks provided clients a global IP address (very few), which ones we did not see any filtering for (a relatively large, but insufficient number to take any deployment for granted), and which ones discarded packets with invalid checksums, normalised particular fields - either dropped packets or reset to different values - and what type of mapping did NATs perform - only port number remapping or also changed sequence numbers.
 
 Checksum behaviour was particularly interesting. In traditional NATs~\cite{Egevang:tu} checksum recomputation is very simple: subtract the old header fields from the checksum and add the new ones to minimize the resource use. In our sample X networks only do that, as indicated by the fact that they allow packets with incorrect checksums through towards the endpoint (otherwise the packet would either be dropped or a valid checksum would be recomputed). It is not always the case and another alternative is to add payload to a packet to make checksum a specific value. It can only be done when the receiving end is already expecting it, since it should not pass such payload up to the layer above, therefore can only be used from SYNACK onwards. A bigger issue here is that middleboxes do not always respect the standard and simply drop such packets even though the standard clearly allows handshake packets to contain payload~\cite{Postel:3EDyoxP_,Chu:2011tn}:
 
 \begin{quotation}
-    Although these examples do not show connection synchronization using data-carrying segments, this is perfectly legitimate...
+    Although these examples do not show connection synchronization using data-carrying segments, this is perfectly legitimate
 \end{quotation}
 
-We also tested middlebox itneraction with reserved header bits. We separated our tests to handshake and data exchange parts as well as set each bit individually, however we did not observe different behavior for these: the bits were either passwd through or cleared at both phases, but we did not observe cases when such packets are dropped.
+We also tested middlebox itneraction with reserved header bits. We separated our tests to handshake and data exchange parts as well as set each bit individually, however we did not observe different behavior for these: all reserved bits were either allowed through or cleared at both phases. Importantly, we did not observe cases when such packets are dropped.
 
 
 \subsection{Port-specific middlebox behavior}
