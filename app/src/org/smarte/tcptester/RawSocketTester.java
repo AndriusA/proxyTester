@@ -118,8 +118,9 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
         mProgress.setMax(tests.size());
         int testNo = 0;
+        boolean iptablesFailed = false;
         for (TCPTest test : tests) {
-            if (isCancelled()) break;
+            if (isCancelled() || iptablesFailed) break;
             testNo++;
             publishProgress(1, testNo, tests.size());
             Log.d(TAG, "Running test " + test.name);
@@ -127,6 +128,13 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
             boolean iptablesAdded = false;
             try {
                 iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
+            } catch (Exception e) {
+                Log.e(TAG, "Exception while setting iptables rule", e);
+                iptablesFailed = true;
+                break;
+            }
+
+            try {
                 // Try runnig the test regardless
                 boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
                 if (test.opcode == TCPTest.TEST_GET_GLOBAL_IP && res == true) {
@@ -134,19 +142,18 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
                 }
                 mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
-                Log.e(TAG, "Exception while setting iptables rule or running test", e);
+                
             }
 
             try {
                 boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
                 if (iptablesAdded && !allowed) {
                     Log.e(TAG, "IPTables rule added but not removed!");
-                    // Break the for loop
-                    break;
+                    iptablesFailed = true;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Exception while setting iptables rule or running test", e);
-                break;
+                Log.e(TAG, "Exception while resetting iptables", e);
+                iptablesFailed = true;
             }
         } 
        
@@ -163,6 +170,10 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
         Log.i(TAG, "Test complete");
+        if (iptablesFailed) {
+            Log.i(TAG, "Tests aborted due to iptables failure");
+            return Test.TEST_ERROR | Test.TEST_ERROR_IO;
+        }
         return Test.TEST_COMPLEX; 
     }
 
@@ -172,6 +183,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
      }
 
     protected void onPostExecute(Integer result) {
+        Log.d(TAG, "execution finished, launching resuls activity");
         super.onPostExecute(result);
         Intent intent = new Intent(mActivity, TcpTesterResults.class);
         if (result == Test.TEST_COMPLEX) {
@@ -211,9 +223,9 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         List<InetAddress> localAddresses = getOwnInetAddresses();
         completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 6969, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
 
-        for (TCPTest test : basicTests) {
-            for (int dstPort : serverPorts) {
-                for (InetAddress localAddress : localAddresses) {
+        for (InetAddress localAddress : localAddresses) {
+            for (TCPTest test : basicTests) {
+                for (int dstPort : serverPorts) {
                     // Unprivileged random port number in [1025...65536)
                     int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
                     completeTests.add(new TCPTest(test, serverAddress, dstPort, localAddress, srcPort));

@@ -74,8 +74,10 @@ public class TcpTesterResults extends ActionBarActivity
         
         mSent = (TextView) findViewById(R.id.resultsPosted);
 
+        Log.i(TAG, "Aggregating results for viewing");
         populateDetailedResults(results);
 
+        Log.i(TAG, "Posting results");
         new PostResultsTask().execute(status, getPostResults(results));
     }
 
