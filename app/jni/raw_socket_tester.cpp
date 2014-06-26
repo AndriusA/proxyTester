@@ -159,6 +159,7 @@ int main() {
                         break;
                     case ACK_DATA:
                         result = runTest_ack_data(source, src_port, destination, dst_port);
+                        break;
                     case URG_URG:
                         result = runTest_urg_urg(source, src_port, destination, dst_port);
                         break;
