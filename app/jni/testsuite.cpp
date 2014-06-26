@@ -61,6 +61,7 @@ test_error setupSocket(int &sock) {
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
             uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
             uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+            char *synack_payload, int synack_length,
             uint8_t data_out_res, uint8_t data_in_res,
             char *send_payload, int send_length, char *expect_payload, int expect_length)
 {
@@ -86,9 +87,10 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
 
-    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
-        syn_ack, syn_urg, syn_res, 
-        synack_urg, synack_check, synack_res) != success)
+    test_error handshake_res = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, synack_payload, synack_length);
+
+    if (handshake_res != success)
     {
         LOGE("TCP handshake failed: %s", strerror(errno));
         return test_failed;
@@ -122,6 +124,17 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         return test_failed;
     else
         return test_complete;
+}
+
+test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
+            uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
+            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+            uint8_t data_out_res, uint8_t data_in_res,
+            char *send_payload, int send_length, char *expect_payload, int expect_length)
+{
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, NULL, 0,
+        data_out_res, data_in_res, send_payload, send_length, expect_payload, expect_length);
 }
 
 test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
@@ -213,6 +226,31 @@ test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destin
     
     return runTest(source, src_port, destination, dst_port,
         syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        data_out_res, data_in_res,
+        send_payload, send_length, expect_payload, expect_length);
+}
+
+test_error runTest_ack_data(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
+{
+    uint32_t syn_ack = 0xbeef000B;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    char synack_payload[] = "0B";
+    int synack_length = 2;
+    uint8_t synack_res = 0;
+    uint8_t data_out_res = 0;
+    uint8_t data_in_res = 0;
+    
+    char send_payload[] = "HELLO_0xbeef000B";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    return runTest(source, src_port, destination, dst_port,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        synack_payload, synack_length,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }

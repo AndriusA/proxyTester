@@ -55,6 +55,7 @@ enum opcode_t : uint8_t {
     RESERVED_EST = 12,
     ACK_CHECKSUM_INCORRECT_SEQ = 13,
     ACK_CHECKSUM_SEQ = 14,
+    ACK_DATA = 15,
     GET_GLOBAL_IP = 21,
     RET_GLOBAL_IP = 22,
     RESULT_NOT_IMPLEMENTED = 51,
@@ -156,6 +157,8 @@ int main() {
                     case ACK_CHECKSUM:
                         result = runTest_ack_checksum(source, src_port, destination, dst_port);
                         break;
+                    case ACK_DATA:
+                        result = runTest_ack_data(source, src_port, destination, dst_port);
                     case URG_URG:
                         result = runTest_urg_urg(source, src_port, destination, dst_port);
                         break;

@@ -186,11 +186,13 @@ bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) 
 test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
             struct iphdr *ip, struct tcphdr *tcp,
             struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
-            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
+            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint32_t &data_read)
 {
     int packet_length = receivePacket(sock, ip, tcp, exp_src, exp_dst);
     if (packet_length < 0) 
         return receive_error;
+    if (packet_length >= IPHDRLEN + TCPHDRLEN)
+        data_read = packet_length - IPHDRLEN - TCPHDRLEN;
     if (!tcp->syn || !tcp->ack) {
         LOGE("Not a SYNACK packet");
         return protocol_error;
@@ -367,7 +369,8 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote,
                 uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
+                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+                char *synack_payload, int synack_length)
 {
     test_error ret;
     seq_local = 0;
@@ -380,12 +383,27 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     seq_local = ntohl(tcp->seq) + 1;
 
     // Receive and verify that incoming packet source is our destination and vice-versa
-    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res);
-    seq_remote = ntohl(tcp->seq) + 1;
+    uint32_t data_read = 0;
+    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res, data_read);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
         return ret;
     }
+    char *data = buffer + IPHDRLEN + TCPHDRLEN;
+    int datalen = 0;
+    if (synack_length > 0) {
+        if (data_read != synack_length) {
+            LOGD("SYNACK data_read different than expected");
+            return synack_error_data;
+        }
+        else if (memcmp(data, synack_payload, synack_length) != 0) {
+            LOGD("SYNACK data different than expected");
+            return synack_error_data;
+        }
+        LOGD("SYNACK data received as expected");
+        datalen = data_read;
+    }
+    seq_remote = ntohl(tcp->seq) + 1 + datalen;
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
     buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
@@ -394,6 +412,16 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
         return send_error;
     }
     return success;
+}
+
+test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
+                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
+{
+    return handshake(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote,
+        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, NULL, 0);
 }
 
 // Cleanly shutdown the connection with the

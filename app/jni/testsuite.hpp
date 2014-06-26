@@ -55,6 +55,9 @@ test_error runTest_ack_urg(uint32_t source, uint16_t src_port, uint32_t destinat
 // set to 0xbe04. This is to check if URG pointer without URG flag is allowed through on downlink, since 
 // in other cases the uplink packet may be filtered
 test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
+
+test_error runTest_ack_data(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
+
 // Using ACK field in SYN and setting SYNACK to have specific checksum value (0xbeef) after NATing is nullified
 // (subtract destination IP address / port from the value). No other fields are changed to make sure that the
 // checksum is correct, so it is very likely not to be.

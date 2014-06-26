@@ -62,6 +62,12 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 uint32_t &seq_local, uint32_t &seq_remote,
                 uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
                 uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res);
+test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
+                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                uint32_t &seq_local, uint32_t &seq_remote,
+                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
+                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
+                char *synack_payload, int synack_length);
 
 test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],

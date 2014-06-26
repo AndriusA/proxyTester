@@ -160,6 +160,12 @@ def process_packet(pkt_in):
       SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1, urgptr=0xbe07)
       pak=ip/SYNACK
 
+    elif (pkt_in[TCP].ack == 0xbeef000B):
+      logfile.write("\n\n--- TESTCASE 0xbeef000B ---" + "\n")
+      connectionTest[connID] = 11
+      SYNACK=TCP(sport=sport, dport=dport, flags="SA", seq=12345, ack=pkt_in[TCP].seq+1)
+      pak=ip/SYNACK/"0B"
+
     elif(pkt_in[TCP].reserved > 0):
       logfile.write("\n\n--- TESTCASE SYN RESERVED ---" + "\n")
       logfile.write("SYN packet with reserved " + str(pkt_in[TCP].reserved) + "\n")

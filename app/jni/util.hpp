@@ -44,6 +44,7 @@ enum test_error {
     synack_error_urg,
     synack_error_check,
     synack_error_res,
+    synack_error_data,
     ack_error,
     send_error,
     invalid_packet,
