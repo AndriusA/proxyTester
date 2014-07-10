@@ -5,6 +5,7 @@
 \usepackage{epsfig}
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage{lipsum}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{amsfonts}
@@ -19,6 +20,8 @@
 \usepackage{multirow}
 \usepackage{listings}
 
+
+\captionsetup[figure]{labelfont={small},textfont={small}}
 
 %\pdfpagewidth 8.5in
 %\pdfpageheight 11in
@@ -104,9 +107,9 @@
 
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{noTCP: extending across middleboxes through unspecified behavior}
+\title{NoTCP: steganopgraphic tricks to bypass middleboxes}
 \ifnum\anon=1
-\author{[Paper: \#XXX]}% \hspace{0.2cm} \ampmtime ]}
+\author{[Paper: \#137]}% \hspace{0.2cm} \ampmtime ]}
 \else
 \numberofauthors{3}
 \author{
@@ -129,7 +132,7 @@
 % Comment it out when you first submit the paper for review.
 %\thispagestyle{empty}
 \begin{abstract}
-TCP has become the de facto transport protocol in the Internet. The necessity to extend it as well as the difficulty of doing so has lead researchers to explore new ways of exchanging control information between endpoints. In this paper we explore the choices for such exchange without using more TCP options. To achieve it we design noTCP - a mechanism which uses TCP header fields in combinations that do not have specified semantics to exchange a small amount of control information between endpoints to bootstrap a control channel. We also present a preliminary study which shows the mechanism works across large cellular and WiFi networks.
+TCP is the de facto transport protocol in the Internet. However it has many limitations that make it ill suited to the modern world of high mobility and multi-homing. Protocol optimizations and filtering performed by middleboxes make extension deployment challenging which has led researchers to explore new ways of exchanging control information between endpoints. In this paper we explore steganographic approaches to smuggle information between endpoints. We design NoTCP -- a mechanism which uses the TCP header fields in combinations that are currently have no defined semantics to hide a small amount of control information from middleboxes and hence bootstrap a control channel. We also present a preliminary study showing how the mechanism works across cellular and WiFi networks.
 \end{abstract} 
 
 \section{Introduction}
@@ -137,7 +140,7 @@ TCP has become the de facto transport protocol in the Internet. The necessity to
 
 Extensibility of the Internet has been not like originally envisioned for a long time now, starting with IP layer and extending the \emph{narrow waist} to TCP or even HTTP at large. The problem is caused by the various middleboxes that aim to improve performance\cite{Kopparty:2002ht,Chakravorty:2003dm}, increase security\cite{Handley:2001vp,Vutukuru:2008fc} and solve address shortage problems. Even congestion control has required multiple extensions since protocol's inception and the large number of proposed congestion control schemes~\cite{5462976} suggests that more will be necessary.
 
-In an ideal world all infrastructure is forwards compatible and changes together with the needs of the users. Instead, TCP has become the de facto transport protocol of the Internet and development of its extensions has been very challenging. Proposals including MPTCP~\cite{Handley:vj} for multi-homed endpoints and TCPCrypt~\cite{Mazieres:uz} for ubiquitous end-to-end traffic encryption are necessary for today's networks but deployment has been slow.
+In an ideal world all infrastructure is forwards compatible and changes together with the needs of the users. Instead, TCP has become the de facto transport protocol of the Internet and development of its extensions has been very challenging. Proposals including MPTCP~\cite{Handley:vj} for multi-homed endpoints and TCPCrypt~\cite{Mazieres:uz} for ubiquitous end-to-end traffic encryption are necessary for today's networks but deployment has been slow and difficult. Previous work on MPTCP overviews the major problems with different types of middleboxes~\cite{Raiciu:2012ur}.
 
 Although TCP has been built to be extensible via options and reserved bits, all extensions are primarily designed around the limitations of existing network middleboxes\cite{Honda,Guha2005tb,UntoldMiddlebox2011}, but even if options were not filtered, we have run out of the 40-byte TCP option space.
 
@@ -158,7 +161,7 @@ With the focus on cellular and WiFi networks due to their renown middlebox pecul
 
 Without using the options field and only changing the meaning of header fields in a backwards-compatible manner we only have a few options:
 \begin{itemize}
-    \item Setting header fields to specific values without setting the corresponding flags so that they do not have a meaning to legacy implementations.
+    \item Setting header fields to specific values without setting the corresponding flags so they do not have a meaning to legacy implementations.
     \item Assigning one or more of the reserved field bits.
     \item Defining semantics for specific values of currently valid header fields.
 \end{itemize}
@@ -206,7 +209,7 @@ Potential limitations of our methodology include that we do not consider packet 
 
 Instead of trying to infer which source port number would be assigned to a new connection by the kernel network stack without using it, we randomized the selection within the unprivileged port range. It was a simple optimization that works on any device and minimizes the probability of multiple tests failing due to another application using a particular port. We also repeated the tests on different destination ports, which we discuss in Sec.~\ref{sec:portspec}.
 
-Non-transparent proxies are a major problem for extension deployment, therefore we used another well know and widely deployed tool to detect proxies on our tested networks. The tests were run separately and we used it to discover non-transparent proxies. This test works by checking if proxies respond to a TCP connection from the client: SYN request is going to a server that is instrumented not to reply to the client and the client would not be able to finish the handshake without a proxy, otherwise there is a proxy. To see if proxying depend on the higher-level protocol, it also detects HTTP proxies by checking content and header changes, different IP address seen by the server for HTTP or non-HTTP traffic, whether non-HTTP traffic on HTTP port is filtered, HTTP traffic is normalized (\ie deliberately modified headers are fixed) and some other aspects. Results are presented in Sec.~\ref{sec:proxies}.
+Non-transparent proxies are a major problem for extension deployment, therefore we used another well know and widely deployed tool to detect proxies on our tested networks. The tests were run separately and we used it to discover non-transparent proxies. We primarily use previously developed technique~\cite{Weaver:RHwbx82O} --  non-responsive server test. To see proxying dependence on higher-level protocols we also detect HTTP proxies using techniques proposed in the work, including checking content and header changes, different IP addresses seen for HTTP or non-HTTP traffic, whether non-HTTP traffic on HTTP port is filtered, HTTP traffic is normalized (\ie deliberately modified headers are fixed). Results are presented in Sec.~\ref{sec:proxies}.
 
 \section{Network characteristics}
 \label{sec:network}
@@ -214,40 +217,40 @@ Non-transparent proxies are a major problem for extension deployment, therefore 
 \begin{table*}[t]
 {\small
 \begin{center}
-\begin{tabular}{| l | >{\centering\arraybackslash}m{1.2cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
+\begin{tabular}{| l | >{\centering\arraybackslash}m{1.2cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.8cm} | >{\centering\arraybackslash}m{1.6cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.5cm} | >{\centering\arraybackslash}m{1.cm} | }
 \hline
-    \textbf{Net ID} & \textbf{Country} & \textbf{Port-specific} & \textbf{Validate checksum} & \textbf{Drop S/A data} & \textbf{Normalize Ack \#}  & \textbf{Normalize Urg ptr} & \textbf{Normalize Reserved} & \textbf{Remap Seq.} \\ \hline \hline
+    \textbf{Net ID} & \textbf{Country} & \textbf{Port-specific} & \textbf{Validate checksum} & \textbf{Drop SYN-ACK data} & \textbf{Normalize SYN Ack number}  & \textbf{Normalize Urgent Pointer} & \textbf{Normalize Reserved} & \textbf{Remap Sequence} \\ \hline \hline
     % Univ Helsinki WiFi
-    WiFi edu 1      & FI               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
+    WiFi edu 1      & Finland               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
     % Eduroam
     WiFi edu 2      & UK               &                        &                            & \checkmark             &                         & \checkmark             &                             & \checkmark          \\ \hline
     % wgb
     WiFi pub 1      & UK               &                        &                            &                        &                         &                        &                             &                     \\ \hline
     % MKSW germany (carlos)
-    WiFi pub 2      & DE               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
+    WiFi pub 2      & Germany               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
     % Virgin home
     WiFi res 1      & UK               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
     % TEO Lt
-    WiFi res 2      & LT               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
+    WiFi res 2      & Lithuania               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
     % Telefonica Free
-    WiFi ent 1      & ES               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
+    WiFi ent 1      & Spain               &                        & \checkmark                 & \checkmark             &                         &                        &                             &                     \\ \hline
     \hline
     % Finland internet.saunalahti
-    Cellular 1      & FI               &                        &                            &                        &                         &                        &                             &                     \\ \hline
+    Cellular 1      & Finland               &                        &                            &                        &                         &                        &                             &                     \\ \hline
     % GiffGaff
     Cellular 2      & UK               &  443, 993              & -                          & -                      & -                       & -                      & -                           & -                   \\ \hline
     % E-Plus germany
-    Cellular 3      & DE               &                        &                            &                        &                         & \checkmark             &                             & \checkmark          \\ \hline
+    Cellular 3      & Germany               &                        &                            &                        &                         & \checkmark             &                             & \checkmark          \\ \hline
     % EE/T-Mobile
     Cellular 4      & UK               &               80, 443  & -                          & -                      & -                       & -                      & -                           & -                   \\ \hline
     % Three UK
     Cellular 5      & UK               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
     % Omnitel LT
-    Cellular 6      & LT               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
+    Cellular 6      & Lithuania               &                        & \checkmark                 &                        &                         &                        &                             &                     \\ \hline
 \end{tabular}
 \end{center}
 }
-\caption{Network behavior observed through tests generating custom TCP packets. A dash means that we observed different cases on the same network.}
+\caption{Network behavior observed through tests generating custom TCP packets. A dash means different cases observed based on port numbers.}
 \label{tab:networks}
 \end{table*}
 
@@ -280,34 +283,17 @@ We repeat our tests on a few ports:
     \item 8000 - common HTTP proxy port number
 \end{itemize}
 
-We have only observed port-specific behavior on two networks: \emph{Cellular 2} and \emph{Cellular 4}. In the first case, traffic travels over SSL ports (443, 993) unmodified except for packets with invalid checksum being dropped. Our traffic was not encrypted and an increasing proportion of traffic is served over SSL. A commercially deployed HTTP accelerator reports the proportion of HTTPS requests to be close to that of HTTP\footnote{\url{http://db.awazza.com/users/global/}}, making the value of such proxying questionable.
+We only observed port-specific behavior on two networks: \emph{Cellular 2} and \emph{Cellular 4}. In the first case, traffic travels over SSL ports (443, 993) unmodified except for packets with invalid checksum being dropped. Our traffic was not encrypted and an increasing proportion of traffic is served over SSL. A commercially deployed HTTP accelerator reports the proportion of HTTPS requests to be close to that of HTTP\footnote{\url{http://db.awazza.com/users/global/}}, making the value of such proxying questionable.
 
-We confirmed the middlebox to be an optimizing proxy (ByteMobile). It replaces the original connections with a new one which adds options not present in original packets, changes window size and resets other fields to new values. Such behavior makes deployment of any protocol modifications or extensions very difficult (e.g. we verified that TCPCrypt does not work on this network) and although we did not see more cases of it, the company claims over 160 clients.
+We confirmed the middlebox to be a ByteMobile proxy. It replaces the original connections with a new one which adds options not present in original packets, changes window size and resets other fields to new values to optimize TCP for cellular networks~\cite{Ha:2006td}. Such behavior makes deployment of any protocol modifications or extensions very difficult (e.g. we verified that TCPCrypt does not work on this network). Although we did not see more cases of it, the company claims over 160 clients.
 
 In the second case, traffic was only modified when going to ports 80 and 443. As we discuss below, the network optimizes HTTP traffic and since our traffic does not resemble valid HTTP, it is dropped.
 
 \subsection{Non-transparent proxies}
 \label{sec:proxies}
 
-Non-transparent proxies are one of the biggest problems for TCP extension deployment. They terminate a connection between an initiator and destination and replaces it with a new one towards the destination, often deliberately changing connection parameters to optimize for certain behavior (\eg ByteMobile, HTTP proxies). We checked for non-transparent proxies on in our tested networks on a number of popular port numbers:
-
-21, 22, 25, 80, 110,
-  135,
-  139,
-  143,
-  161,
-  443,
-  445,
-  465,
-  585,
-  587,
-  993,
-  995,
- 1194,
- 1723,
- 5060,
- 6881,
- 9001
+Since proxies make new changes very difficult, we checked for non-transparent oes on in our tested networks on a number of popular port numbers:
+21, 22, 25, 80, 110, 135, 139, 143, 161, 443, 445, 465, 585, 587, 993, 995, 1194, 1723, 5060, 6881, 9001.
 
 \begin{table}[t!]
 {\small
@@ -320,22 +306,24 @@ Non-transparent proxies are one of the biggest problems for TCP extension deploy
     Cellular 4      & HSPA                      & 80, 110, 143 \\ \hline
     Cellular 4      & LTE                       & 80, 110, 143, 443, 993, 995 \\ \hline
     % T-Mobile, part of EE
-    Cellular 4\*     & HSPA                     & 25, 80, 110, 143 \\ \hline
+    Cellular 4*     & HSPA                     & 25, 80, 110, 143 \\ \hline
     % Virgin on T-Mobile
-    Cellular 4\*\*    & HSPA                    & 25, 80, 110, 143 \\ \hline
+    Cellular 4**    & HSPA                    & 25, 80, 110, 143 \\ \hline
 \end{tabular}
 \end{center}
 }
-\caption{Proxies}
+\caption{Non-transparent proxies and proxied port numbers by radio technology}
 \label{tab:proxies}
 \end{table}
 
 Results are summarized in Table~\ref{tab:proxies}. Cellular 2 proxies almost all of our tested ports except for 443 and 993 as observed before. 
-Cellular 4, is a more interesting case since reported proxying is not the same across the whole network. It is not obvious why ports used for encrypted communication are proxied over LTE and in our dataset there was only 1 case for HTTPS, but the other two cases seem related to the operator being formed by merging two operators. These differences are evident in \emph{whois} records, reported network name (\textbf{\*} shows the old operator name) and MVNO setup (\textbf{\*\*}). It is not safe to estimate proxying just from \emph{whois} records either: they do not necessarily match the operator names and we saw the same address ranges used with all Cellular 4 reported network names for HSPA and LTE radios. 
+Cellular 4 shows non-uniform behavior across the network. It is not obvious why ports commonly used for encrypted communication are proxied over LTE, we only recorded 1 case for HTTPS. The other two cases (* and **) seem related to the operator being formed from two merged operators. These differences are evident in \emph{whois} records, device-reported network name (\textbf{*} shows the old operator name) and MVNO setup (\textbf{**} setup with the old operator).
 
-Proxying is protocol-dependent in some cases: looking at port 80, Cellular 4\*\* modified HTTP headers, performed transcoding and reordered header fields, but only modified non-HTTP traffic for one of the two sessions. On Cellular 1 (15 sessions) two sessions show DNS proxies and on Cellular 5 (47 sessions) in two cases non-HTTP traffic is filtered on port 80, signaling that there still may be some proxying within the networks. Finally, Cellular 2 and 4 both reorder HTTP headers and perform transcoding, but allow non-HTTP traffic.
+It is not safe to estimate proxying just from \emph{whois} records: they do not necessarily match the operator names and we saw the same address ranges used with all device-reported network names for HSPA and LTE radios. An active test is needed reliably detect proxies.
 
-We did not have data about Cellular 6, but results discussed above suggest that there are no non-transparent proxies present. All other networks did not show non-transparent proxy behavior, but did not necessarily allow for TCP modifications either. In addition, the tests on port 80 show that a number of networks contain middleboxes that optimize HTTP, but such protocol-specific behavior is not uniform even within a single network making it more difficult to implement any changes.
+Proxying is protocol-dependent in some cases: looking at port 80, Cellular 4\*\* modified HTTP headers, performed transcoding and reordered header fields, but only modified non-HTTP traffic for one of the two sessions. On Cellular 1 (15 sessions) two sessions show DNS proxies and on Cellular 5 (47 sessions) in two cases non-HTTP traffic is filtered on port 80, signaling that there still may be some proxying within the networks. Finally, Cellular 2 and 4 both reorder HTTP headers and perform transcoding, but Cellular 4 does not always allow non-HTTP traffic. We did not have data about Cellular 6, but results discussed above suggest that there are no non-transparent proxies present.
+
+All other networks did not show non-transparent proxy behavior, but the ones who did pose a challenge that is not easily solved. Proxies potentially change every aspect of the original connection and hiding any information within the packet becomes extremely difficult since any value that a proxy does not recognize is reset.
 
 
 %    an_op_name    | an_cell_net_type | an_country | port |    ip_global (simplified to network address. Included the owner according to whois
@@ -390,10 +378,12 @@ What is common to all candidate protocol changes described above is that they ar
 
 \begin{figure}[t!]
 \centering
+\small{
 \includegraphics[width=\columnwidth]{figs/tcp-header}
 % \vspace{-2mm}
-\caption{TCP Header}
+\caption{NoTCP Header with overloaded fields and extra Checksum Correction / Control Stream fields within payload}
 \label{fig:header}
+}
 % \vspace{-4mm}
 \end{figure}
 
@@ -402,24 +392,26 @@ A surprising result in our tests is that the \emph{Acknowledgment Number} field 
 For acknowledging extensions in SYN-ACK packet we use Urgent Pointer and Checksum fields. Our tests indicate that neither choice is guaranteed to succeed, therefore we combine the two by redefining their values when SYN=1. We define Urgent Pointer to be $Opcode_U$ when URG=0 and Checksum to carry a meaning when Urgent Pointer = 0 to get around the cases where one is blocked but the other one is not. Across all networks we have tested in our preliminary study at least one of the choices succeeds.
 
 Checksum value can not be used directly as an opcode since it changes at every level of NAT. The traditional NAT does a simple recalculation of the checksum~\cite{Egevang:tu}: subtracts the original source address and port number (in some cases also the sequence number) and adds the new values. The received Checksum after \(n\) NAT hops is therefore
-
+\vspace{-2mm}
 \begin{align*}
 Checksum_2 & = Checksum_1 - src_1 + src_2 \\
 Checksum_i & = Checksum_{i-1} - src_{i-1} + src_i \\
  ... \\
 Checksum_n & = Checksum_1 - src_1 + src_n
 \end{align*}
+\vspace{-2mm}
 
-Therefore we encode the Opcode as a target checksum so that it is recoverable by a simple binary subtraction of source port number and address and sequence numbers when they are remapped by the NAT (3-7 16-bit operations in total): 
-
+We encode the Opcode as a target checksum so that it is recoverable by a simple binary subtraction of source port number, address and sequence numbers in case they are remapped by the NAT (3-7 16-bit operations in total): 
+\vspace{-2mm}
 \begin{align*}
 Checksum_{target} & = Opcode + src_1 \\
 Checksum_n = Opcode_C & = Opcode + src_n
 \end{align*}
+\vspace{-2mm}
 
 There are two choices for setting checksum to a specific value: invalid checksum or adding padding payload. The latter can only be done when the receiving end is already expecting it, since it should not pass such payload up to the layer above, but keeps a packet valid from network's perspective.
 
-For our prototype we assign the first 16 bits of the payload as \emph{Checksum Correction} to force a specific checksum, in line with other extensions which reuse part of data payload for option negotiation and maintaining validity of a packet. This Checksum Correction field is not delivered to the application. TLV-Encoded Control Stream can be present in data part~\cite{Bonaventure:wx} of the SYN-ACK packet after the Checksum Correction field.
+For our prototype we assign the first 16 bits of the payload as \emph{Checksum Correction} to force a specific checksum, in line with other extensions which reuse part of data payload for option negotiation and maintaining validity of a packet. This Checksum Correction field is not delivered to the application. TLV-Encoded (Type-Length-Value) Control Stream can be present in data part~\cite{Bonaventure:wx} of the SYN-ACK packet after the Checksum Correction field.
 
 Sending data with SYN-ACK packet works on all cellular networks we have tested, but does not on most WiFi. However, for all three cases (Urgent pointer and checksum) the information either reaches the destination as intended, or the packet is dropped. On all of our tested networks at least one case succeeds if there is no non-transparent proxy.
 
@@ -448,26 +440,28 @@ An example handshake is shown in Fig.~\ref{fig:handshake}. In this case a client
 
 An issue with putting control stream into packet payload is that some middleboxes split ACK packets with data into two: one only acknowledging the received data and the other one with the actual payload. It is not an issue with TLV-encoded control stream in the payload, because it will be delivered to the receiver first. Hence if the passive opener receives data during or immediately after the handshake but can not decode that as valid TLV-encoded control information, it treats that as application data and falls back to vanilla TCP.
 
-After the first data packets there are potential problems with packet resegmentation: control stream may reach the destination in the middle of a payload of a packet and would be impossible to find without scanning the whole payload. Either SCTP style chunking or MPTCP DSS option can be reused to get around the problem. We leave the it as an open question.
+After the first data packets there are potential problems with segment splitting and coalescing : control stream may reach the destination in the middle of a payload of a packet and would be impossible to find without scanning the whole payload. Either SCTP style chunking or MPTCP DSS option can be reused to get around the problem. The obvious drawback of such choice is that control stream becomes subject to flow control. We leave refinement of the full control channel for future work.
 
 \section{Discussion}
 
-The main points of discussion on \emph{noTCP} is the same as with all TCP extensions: is it necessary, is it deployable and is it forwards-compatible? Furthermore, any special protocol negotiation still needs to be standardized to ensure compatibility at the Internet scale...
+The main points of discussion on \emph{NoTCP} are the same as with all TCP extensions: is it necessary, is it deployable and is it forwards-compatible? We have discussed the first two throughout the paper, but the biggest challenge for forwards-compatibility is NoTCP's overloading of header fields instead of using options. It is an extremely hard sell for standards bodies. However the main motivation of our work is precisely that options are no longer a usable choice for new extensions hence such position is justified.
 
-The exact protocol semantics are subject to further testing and discussions. The main goal of this work is to identify a potential path for negotiating TCP extensions between two endpoints across currently deployed networks and we show how a full control stream for TCP can be bootstrapped by defining or overloading the meaning of underspecified header fields.
+The exact protocol semantics are subject to further testing and discussions. The main goal of this work is to identify potential methods for exchanging control information by hiding it from existing middleboxes and we show how a full control stream for TCP can be bootstrapped by overloading the meaning of underspecified header fields.
 
-\Anote{unfinished}
+We also need to extend our study to more networks to make sure that our proposed method of exchanging control information works in diverse scenarios. More importantly, we have left open the question of finding a method to hide such information from non-transparent proxies. The easiest albeit very limited solution is to identify and cache port numbers that allow unmodified traffic. Our goal instead is to study commonly found proxy implementations in detail in order to quickly identify them as well as encode information within their own operating patterns.
 
 \section{Related Work}
 \label{sec:related}
 
+Steganography has been used in the past to hide information within network protocols. The main focus has been on covert channels that violate system's security policy and initial sequence numbers~\cite{Rowland:1997vq}, TCP Timestamps~\cite{Giffin:2002wh} and combinations with IP flags~\cite{Murdoch:2005fz}. There are detection techniques for these methods and our main goal is to exchange a small amount of control information rather than a genuine covert channel, asking for a different design.
+
 TCP implements an \emph{urgent mechanism} at its core that allows the sending user to stimulate the receiving user to accept some \emph{urgent data}. The mechanism is often quoted as providing ``out-of-bound'' data delivery even though it is specified that it is not a mechanism for sending such data. Furthermore, there are ambiguities regarding the semantics of the urgent pointer, Network Intrusion Detection Systems (NIDS) tend to clear the URG flag and pointer and in general it is recommended against the use of the mechanism~\cite{Gont:2011vi}.
 
-A very recent proposal for a more accurate ECN feedback~\cite{Kuhlewind:2014vd} in uses an additional reserved bit, overloads the meaning of already assigned ECN and NS bits and that of the urgent pointer when URG is not set.\Anote{finish this}
+AccECN proposal~\cite{Kuhlewind:2014vd} uses an additional reserved bit, overloads the meaning of already assigned ECN~\cite{Floyd:up} and NS~\cite{Ely:uc} bits and redefines Urgent Pointer as Non-Urgent when URG is not set. The idea is highly related to ours, but reserving the field solely for ECN use prevents other extensions from using. Furthermore, we saw that some networks block packets with such field, making it especially difficult to use for ECN.
 
-In the context of MPTCP one proposal to add a generic control stream is to map such stream into a separate sequence number space and exchange control data over established subflows, only modifying MPTCP DSS option to use one of the reserved bits to differentiate the control stream from the data stream. Arguably the specified options are complex as well as extensible to enable it are precisely because there are very few ways in which TCP itself can be extended. the underlying assumption, however, is that MPTCP is already deployed as well as that existing deployments will be forwards-compatible with the specification.
+Generic control stream for MPTCP~\cite{Bonaventure:wx} can be reused once it has been negotiated. It proposes mapping such stream into a separate sequence number space and exchange control data over established subflows, only modifying the MPTCP DSS option to differentiate control and data streams. The underlying assumption, however, is that MPTCP is already deployed and that existing deployments will be forwards-compatible with the new specification.
 
-Conceptually close to MPTCP's subflows is SCTP's \emph{data chunks}, where a packet can contain multiple TLV (Type-Length-Value) encoded chunks to separate user data and control information. Despite its challenged deployment in the Internet, SCTP over DTLS is being used as the basis of WebRTC data protocol~\cite{Tuexen:wv} and we suggest that such chunking could be used on top of \emph{noTCP} once such behavior has been negotiated as described above.
+%More generally SCTP uses \emph{data chunks} to differentiate between different subflows. Each packet can contain multiple TLV-encoded chunks to separate user data and control information. Despite its challenged deployment in the Internet, SCTP over DTLS is being used as the basis of WebRTC data protocol~\cite{Tuexen:wv} and we suggest that such chunking could be used on top of \emph{noTCP} once control channel has been bootstrapped.
 
 
 \section{Conclusion}
@@ -480,7 +474,7 @@ TBD
 \fi
 
 
-\clearpage
+% \clearpage
 %Only show things we really cite :)
 % \nocite{*}
 {
