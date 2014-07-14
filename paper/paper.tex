@@ -417,7 +417,7 @@ For acknowledging extensions in SYN-ACK packet we use Urgent Pointer and Checksu
 
 Checksum value can not be used directly as an opcode since it changes at every level of NAT. The traditional NAT does a simple recalculation of the checksum~\cite{Egevang:tu}: subtracts the original source address and port number (in some cases also the sequence number) and adds the new values. The received Checksum after \(n\) NAT hops is therefore
 
-\vspace{-4mm}
+% \vspace{-2mm}
 \begin{align*}
 Checksum_2 & = Checksum_1 - header_1 + header_2 \\
 Checksum_i & = Checksum_{i-1} - header_{i-1} + header_i \\
@@ -427,7 +427,7 @@ Checksum_n & = Checksum_1 - header_1 + header_n
 
 Here $header$ refers to the fields of the header that change, namely the destination port number, address and sequence number. Previous study~\cite{UntoldMiddlebox2011} found no NATs mangling sequence numbers, but we witnessed a few cases of such behavior. The Opcode can then be encoded as a target checksum so that it is recoverable by a simple binary subtraction of the changing fields (3 to 7 16-bit arithmetic operations in total):
 
-\vspace{-4mm}
+% \vspace{-2mm}
 \begin{align*}
 Checksum_{target} & = Opcode + header_1 \\
 Checksum_n = Opcode_C & = Opcode + header_n
@@ -466,7 +466,7 @@ Putting control stream into packet payload suffers from much the same issues as 
 
 We witnessed a case of resegmentation where an ACK segment is split to one only acknowledging the received data and another other one with the actual payload. It is not an issue with TLV-encoded control stream in the payload, because it will be delivered to the receiver first. The mechanism of \emph{Checksum Correction} would, however, be compromised for the first segment. If the passive opener receives data during or immediately after the handshake but can not decode that as valid TLV-encoded control information, it treats that as application data and falls back to vanilla TCP.
 
-After the first data packets there are potential problems with segment splitting and coalescing : control stream may reach the destination in the middle of a payload of a packet and would be impossible to find without scanning the whole payload. Either SCTP style chunking or MPTCP DSS option can be reused to get around the problem. The obvious drawback of such choice is that control stream becomes subject to flow control. We leave refinement of the full control channel for future work.
+The focus of our work is to show the possibility of exchanging control information within the packet header. We therefore leave refinement of the full control channel for future work.
 
 \section{Related Work}
 \label{sec:related}
@@ -505,7 +505,7 @@ Finally, we would like to use the results of the study to develop a set of rules
 \fi
 
 
-% \clearpage
+\clearpage
 %Only show things we really cite :)
 % \nocite{*}
 {
