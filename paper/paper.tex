@@ -20,7 +20,6 @@
 \usepackage{multirow}
 \usepackage{listings}
 
-
 \captionsetup[figure]{labelfont={small},textfont={small}}
 
 %\pdfpagewidth 8.5in
@@ -159,51 +158,48 @@ We use our initial study to design a way of exchanging a small amount of control
 \begin{figure}[t!]
 \centering
 \small{
-\includegraphics[width=.99\columnwidth]{figs/tcp-header}
-\vspace{-5mm}
+\includegraphics[width=\columnwidth]{figs/tcp-header}
+% \vspace{-5mm}
 \caption{TCP Header with overloaded fields and extra control information (Checksum Correction / Control Stream) in payload}
 \label{fig:header}
 }
-\vspace{-4mm}
+% \vspace{-4mm}
 \end{figure}
 
-Figure~\ref{fig:header} shows the TCP header with fields that we propose for reuse and define later in the paper. However, the structure of TCP header is very simple and gives few choices for hiding extra control information:
+Figure~\ref{fig:header} shows the TCP header with fields that we propose for reuse (defined later in the paper). The structure of the TCP header is very simple and gives few choices for hiding extra control information:
 \begin{itemize}
     \item Setting header fields without the corresponding flags so they have no meaning to legacy implementations.
     \item Assigning one or more of the reserved field bits.
     \item Overloading the semantics for valid header fields.
 \end{itemize}
 
-\subsubsection*{Unset Flags}
+\subsubsection*{Flag-dependent semantics}
 \label{sec:unset}
 
-Only 2 header fields have their semantics set by corresponding flags. These are the \emph{Acknowledgment Number} and \emph{Urgent Pointer} fields. The former must also always be set after the initial SYN packet.
-%The only header fields that may not have a meaning depending on the corresponding flag are \emph{Urgent Pointer} and \emph{Acknowledgment Number}. The latter must always be set after the initial SYN packet.
+Only two header fields have their semantics set by corresponding flags. These are the \emph{Acknowledgment Number} and \emph{Urgent Pointer} fields. The former must also always be set after the initial SYN packet.
 
-The general recommendation is to not use the urgent mechanism~\cite{Gont:2011vi}, therefore it could be reused for other purposes if both endpoints understand the new semantics. On the other hand, it is common practice by Network Intrusion Detection Systems (NIDS) on enterprise networks to reset the field as it makes it difficult to track application-layer data~\cite{seolma}. Importantly, the field becomes \emph{Non-Urgent}~\cite{Kuhlewind:2014vd} when URG is not set -- it has no meaning for legacy implementations and so can be redefined.
+The general recommendation is to not use the urgent mechanism~\cite{Gont:2011vi}, therefore it could be reused for other purposes if both endpoints understand the new semantics. On the other hand, Network Intrusion Detection Systems (NIDS) often reset the field as it makes it difficult to track application-layer data~\cite{seolma}. Importantly, the field becomes \emph{Non-Urgent}~\cite{Kuhlewind:2014vd} when URG is not set -- it has no meaning for legacy implementations and so can be redefined.
 
 The Acknowledgment Number field is only available in the initial SYN packet. It must therefore be combined with another mechanism to acknowledge control information unless TCP Simultaneous Open is used. Simultaneous open is still viable in most cellular networks~\cite{UntoldMiddlebox2011}, but we also explore other options.
 
 \subsubsection*{Reserved bits}
 \label{sec:reserved}
 
-3 TCP Reserved bits remain unallocated. One further bit is only allocated to the experimental ECN nonce\cite{Ely:uc}. Despite their limited size, there are proposals that make use of new reserved bits due to implementation simplicity and non-interference with legacy implementations. One suggestion for reducing Web latency~\cite{Flach:2013uy} by mitigating the effects of a small number of lost packets for short connections is to send multiple copies of packets. The proposal deliberately sends copies, but uses a reserved flag to explicitly mark solution avoids triggering fast retransmit by such duplicate acknowledgments by marking them as duplicates in a reserved flag.
+Three TCP Reserved bits remain unallocated. One further bit is only allocated to the experimental ECN nonce\cite{Ely:uc}. Despite their limited size, there are proposals that make use of new reserved bits due to implementation simplicity and non-interference with legacy implementations. One suggestion for reducing Web latency~\cite{Flach:2013uy} by mitigating the effects of a small number of lost packets for short connections is to send multiple copies of packets. The proposal deliberately sends copies, but uses a reserved flag to explicitly mark solution avoids triggering fast retransmit by such duplicate acknowledgments by marking them as duplicates in a reserved flag.
 
 \subsubsection*{Value-specific semantics}
 
-The remaining choice is to encode information within otherwise valid header fields. It involves generating packets with specific values for initial sequence numbers, window size or checksums. Arguably it is an acceptable choice if deployable in today's networks. Indeed SYN Cookies already do this~\cite{Eddy:2007to}
+The remaining choice is to encode information within otherwise valid header fields. It involves generating packets with specific values for \emph{Initial Sequence Numbers}, \emph{Window Size} or \emph{Checksums}. Arguably it is an acceptable choice if deployable in today's networks. Indeed SYN Cookies already do this~\cite{Eddy:2007to}
 
-Initial sequence numbers must be hard to predict as they provide a measure of security against TCP injection attacks. Adding information to the field to be easily decoded by the receiver makes it predictable and weakens already problematic security~\cite{Bellovin:uz,Qian:2012wb}. Some stateful middleboxes are known to interfere with sequence numbers to improve security instead making it worse~\cite{Qian:2012bj}. Stronger security measures such as TCPCrypt~\cite{Mazieres:uz} are better suited for connection protection.
+\emph{Initial Sequence Numbers} must be hard to predict as they provide a measure of security against TCP injection attacks. Adding information to the field to be easily decoded by the receiver makes it more predictable and weakens already problematic security~\cite{Bellovin:uz,Qian:2012wb}. Also some stateful middleboxes are known to interfere with sequence numbers in an attempt to improve security~\cite{Qian:2012bj}. Stronger security measures such as TCPCrypt~\cite{Mazieres:uz} are better suited for connection protection.
 
-Window size is potentially a better candidate, especially if used during connection setup phase since data is not typically transmitted during the handshake. Using lower-order bits for control information would prevent flow control from operating properly, but higher-order bits could instead be given up when window scaling option is used to compensate for the decrease of advertised window size. Using the field risks interfering both with TCP flow control mechanism as well as window size optimizations by the network~\cite{Kopparty:2002ht,Chakravorty:2003dm} performed \eg by Citrix ByteMobile Proxy~\cite{Ha:2006td}. 
+\emph{Window Size} is potentially a better candidate, especially if used during connection setup phase since data is not typically transmitted during the handshake. Using lower-order bits for control information would prevent flow control from operating properly, but higher-order bits could instead be given up when the \emph{window scaling} option is used to compensate for the decrease of advertised window size. Using the field risks interfering both with TCP flow control mechanism as well as window size optimizations by the network~\cite{Kopparty:2002ht,Chakravorty:2003dm} performed by \eg Citrix ByteMobile Proxy~\cite{Ha:2006td}. 
 
-There are multiple benefits to using the checksum field. Firstly, it is only used for error detection. It may be unnecessary when reliable error detection is done at the layer below, however link-level checks have been shown to be unreliable~\cite{Stone:2000fc}. Instead, it may be replaced with potentially stronger mechanisms \eg MPTCP DSS checksum and TCPCrypt Message Authentication Code) or left for the upper layer.
-
-Secondly, checksum operations are efficient as they only involve one's complement addition. We show later in the paper (Section~\ref{sec:protocol}) how checksums can be generated in a way that the intended value is recovered by the receiver after traversing multiple layers of Network Address Translation (NAT).
+There are multiple benefits to using the checksum field. Firstly, it is only used for error detection. It may be unnecessary when reliable error detection is done at the layer below, however link-level checks have been shown to be unreliable~\cite{Stone:2000fc}. Instead, it may be replaced with potentially stronger mechanisms \eg MPTCP DSS checksum and TCPCrypt Message Authentication Code or left for the upper layer. Secondly, checksum operations are efficient as they only involve one's complement addition. We show later in the paper (\S\ref{sec:protocol}) how checksums can be generated in a way that the intended value is recovered by the receiver after traversing multiple layers of Network Address Translation (NAT).
 
 \section{Measurement Methodology}
 
-To measure current network behavior we have developed an Android application distributed through the \emph{Google Play Store}\footnote{Link omitted to anonymize submission} to collect data from volunteers. It contains a simplified implementation of TCP which generates packet sequences that appear valid to network middleboxes: three-way handshake, data exchange and connection teardown. It allows us to modify various header fields to our purposes and check the values received by the other endpoint. We control both endpoints of each connection, therefore we can detect changes from sent values received by the other endpoint.
+To measure current network behavior we have developed an Android application distributed through the \emph{Google Play Store}\footnote{Link omitted to anonymize submission} to collect data from volunteers. It contains a simplified implementation of TCP which generates packet sequences that appear valid to network middleboxes: three-way handshake, data exchange and connection teardown. It allows us to modify various header fields and check the values received by the other endpoint. We control both endpoints of each connection, therefore we can detect changes from sent values received by the other endpoint.
 
 The test setup is:
 \begin{itemize}
@@ -213,11 +209,7 @@ The test setup is:
 
 Non-transparent proxies are a major problem for extension deployment, therefore we used another well know and widely deployed tool to detect proxies on our tested networks. We implemented previously developed techniques~\cite{Weaver:RHwbx82O} and run the test separately. The primary one was non-responsive server test: the server is instrumented not to respond to SYN, therefore if the connection succeeds it is to a proxy on the path. We repeated these tests on different destination ports and found that proxying can be specific to certain port numbers.
 
-%Transparency of proxies may also depend on higher-level protocols, therefore we checked for HTTP proxies using techniques proposed in the work, including checking content and header changes, different IP addresses seen for HTTP or non-HTTP traffic and whether non-HTTP traffic on HTTP port is filtered.
-
-\subsection{Limitations}
-
-Potential limitations of our methodology include that we do not consider packet splitting and coalescing. By exchanging information within packet headers and using small packets we avoid packet splitting. We also prevent splitting during data exchanging by not send more than a few bytes of data. Coalescing is prevented by only exchanging a single data message each way. For the same reason we do not take congestion control into account.
+Our methodology avoids packet splitting by only using small packets. Coalescing is prevented by only exchanging a single data message each way. For the same reason we do not take congestion control into account.
 
 \emph{Raw sockets} operate in parallel to the kernel network stack. We had to suppress reset packets generated by the kernel in response to TCP packets from sessions it is not aware of. We also had to choose local port numbers unused by the kernel. We chose them randomly from the unprivileged port range and relied on other error detection mechanisms preventing invalid packet delivery to any applications.
 
@@ -260,19 +252,19 @@ Potential limitations of our methodology include that we do not consider packet 
 \end{tabular}
 \end{center}
 }
-\vspace{-4mm}
+% \vspace{-4mm}
 \caption{Network behavior observed through tests generating custom TCP packets. * means different cases observed based on port numbers.}
 \label{tab:networks}
-\vspace{-4mm}
+% \vspace{-6mm}
 \end{table*}
 
-For our preliminary study we have focused on mobile networks including public, residential, university and enterprise WiFi networks as well as 6 cellular networks in 4 different countries. We present our results in Table~\ref{tab:networks}.
+Our preliminary study focused on mobile networks including public, residential, university and enterprise WiFi networks as well as six cellular networks in four different countries. We present our results in Table~\ref{tab:networks}.
 
-The results include networks that did not filter any modifications (only one WiFi and two cellular nets), and others that interfered with our traffic. The interference we tested for includes resetting fields without corresponding flags set (\emph{Acknowledgment Number} and \emph{Urgent Pointer}) or dropping them, discarding packets with invalid checksums, and resetting reserved flags. Only one network provided clients with a global IP (WiFi edu 2) and we also tested whether NATs rewrite sequence numbers in addition to addresses and port numbers.
+The results include networks that did not filter any modifications (only one WiFi and two cellular nets), and others that interfered with our traffic. We looked for dropped packets and reset or altered fields: (\emph{Acknowledgment Number} and \emph{Urgent Pointer}, potentially invalid checksums and reserved flags. Only one network provided clients with a global IP (WiFi edu 2) so we also tested whether NATs rewrite sequence numbers in addition to addresses and port numbers.
 
-As discussed in Section~\ref{sec:unset}, we can squeeze in a few extra bits of information by using certain header fields when the corresponding flags are not set. None of our tested networks filtered the Acknowledgment Number field for the initial SYN packet on non-proxied paths and only two networks discarded packets with the Urgent Pointer set without the URG flag.
+As discussed in \S\ref{sec:unset}, we can squeeze in a few extra bits of information by using certain header fields when the corresponding flags are not set. None of our tested networks filtered the Acknowledgment Number field for the initial SYN packet on non-proxied paths and only two networks discarded packets with the Urgent Pointer set without the corresponding URG flag.
 
-We also tested middlebox interaction with reserved header bits (Section~\ref{sec:reserved}). We separated our tests to handshake and data exchange parts as well as set each bit individually, however we did not observe any differences. All networks appear to pass reserved bits on non-proxied connections.
+We also tested middlebox interaction with reserved header bits (\S\ref{sec:reserved}). We separated our tests to handshake and data exchange parts as well as set each bit individually, however we did not observe any differences. All networks appear to pass reserved bits on non-proxied connections.
 
 Traditional NATs~\cite{Egevang:tu} perform a simple checksum recalculation: subtract the old header fields from the checksum and add the new ones. The networks that deliver packets with invalid checksum only do that. Otherwise they would detect and drop an invalid packet.
 
@@ -292,14 +284,14 @@ To differentiate between general behavior of particular network and application-
 
 We only observed port-specific behavior on two networks: \emph{Cellular 2} and \emph{Cellular 4}. In the first case, traffic travels over SSL ports (443, 993) unmodified except for packets with invalid checksum being dropped. Our traffic was not encrypted. An increasing proportion of traffic is served over SSL, making the value of such proxies questionable: a commercially deployed HTTP accelerator reports the proportion of HTTPS requests to be close to that of HTTP\footnote{\url{http://db.awazza.com/users/global/}}.
 
-We confirmed the middlebox on Cellular 2 to be a ByteMobile proxy. It replaces the original connections with new ones, adding options not present in original packets, changing window size and resetting other fields to different values to optimize TCP for cellular networks~\cite{Ha:2006td}. Such behavior makes deployment of any protocol modifications or extensions difficult -- we verified that TCPCrypt fails on this network. We do not currently have an estimate of how widespread ByteMobile proxies are as we only observed them on one network.
+We confirmed the presence of a ByteMobile proxy on Cellular 2. It replaces the original connections with new ones, adding options not present in original packets, changing window size and resetting other fields to different values to optimize TCP for cellular networks~\cite{Ha:2006td}. Such behavior makes deployment of any protocol modifications or extensions difficult -- we verified that TCPCrypt fails on this network. We do not currently have an estimate of how widespread ByteMobile proxies are as we only observed them on one network.
 
-In the case of \emph{Cellular 4}, traffic was only modified when going to ports 80 and 443. The network likely optimizes HTTP traffic and drops any non-HTTP traffic. Generally port-specific behavior appears related to proxies.
+In the case of \emph{Cellular 4}, traffic was only modified when going to ports 80 and 443. The network likely optimizes HTTP traffic and drops non-HTTP traffic. Generally port-specific behavior appears related to proxies.
 
 \subsection{Non-transparent proxies}
 \label{sec:proxies}
 
-Proxies potentially change every aspect of the original connection, rewrite or filter header values they do not recognize and hiding any information within the packet becomes difficult. We checked for them in our tested networks on a number of popular port numbers:
+Proxies potentially change every aspect of the original connection, rewrite or filter header values they do not recognize so hiding any information within the packet becomes difficult. We tested for them on a number of popular port numbers:
 21, 22, 25, 80, 110, 135, 139, 143, 161, 443, 445, 465, 585, 587, 993, 995, 1194, 1723, 5060, 6881, 9001.
 
 \begin{table}[t!]
@@ -319,101 +311,52 @@ Proxies potentially change every aspect of the original connection, rewrite or f
 \end{tabular}
 \end{center}
 }
-\vspace{-4mm}
+% \vspace{-4mm}
 \caption{Non-transparent proxies and their proxied port numbers by radio technology. */** - see text for details.}
 \label{tab:proxies}
-\vspace{-4mm}
+% \vspace{-4mm}
 \end{table}
-
-We summarize results in Table~\ref{tab:proxies}. 3G and 4G networks use different IP core networks, therefore we split the results by radio technology. We did not detect proxies on Cellular 1 and Cellular 3 networks and did not have data about Cellular 6, but results of our TCP testsuite did not indicate any proxies. Cellular 2 proxies almost all of our tested ports except for 443 and 993.
-
-Cellular 4 shows non-uniform behavior across the network. It is not obvious why the network proxies connections to ports commonly used for encrypted communications. Currently we have only recorded 1 such case for HTTPS. The differences between the other two cases (* and **) seem related to forming the operator from two merged ones. Their infrastructure may have not been completely consolidated: \emph{whois} records and device-reported network names are different. Case \textbf{*} shows the old operator name and \textbf{**} reports the name of a virtual network operator (MVNO). MVNOs buy network services from operators at wholesale rates and typically have little infrastructure of their own, and expect to see the same behavior as that of the underlying network.
-
-Estimating proxying from \emph{whois} records alone is not safe: they do not necessarily match the operator names and we saw the same address ranges used with all device-reported network names for HSPA and LTE radios. Reliable detection needs active testing, potentially combined with caching for repeated connections. 
-
-%Proxying is protocol-dependent in some cases: looking at port 80, Cellular 4\*\* modified HTTP headers, performed transcoding and reordered header fields, but only modified non-HTTP traffic for one of the two sessions. While some networks did not interfere with our tests, they do not appear to be completely free of proxies. On Cellular 1 (15 sessions) two sessions show DNS proxies (over UDP) and on Cellular 5 two sessions (out of 47) had non-HTTP traffic filtered on port 80. Finally, Cellular 2 and 4 both reorder HTTP headers and perform transcoding, but Cellular 4 does not always allow non-HTTP traffic.
-
-%    an_op_name    | an_cell_net_type | an_country | port |    ip_global (simplified to network address. Included the owner according to whois
-% db)
-% -----------------+------------------+------------+------+-----------------
-%  EE              | GPRS             | gb         |   80 | 31.72/19 (EE)
-%  EE              | GPRS             | gb         |  110 | 31.72/19 (EE)
-%  EE              | GPRS             | gb         |  143 | 31.72/19 (EE) 
-%  EE              | HSPA             | gb         |   25 | 31.96/21 (EE), 149.254/16 (T-Mobile UK), 178.96/12 (EE)
-%  EE              | HSPA             | gb         |   80 | 31.80/21 (EE), 31.96/21 (EE), 149.254/16 (T-Mobile UK), 178.96/12 (EE), 213.205.224/12 (EE)
-%  EE              | HSPA             | gb         |  110 | 31.80/21 (EE), 31.96/21 (EE), 149.254/16 (T-Mobile UK), 178.96/12 (EE), 213.205.224/12 (EE)
-%  EE              | HSPA             | gb         |  143 | 31.80/21 (EE), 31.96/21 (EE), 149.254/16 (T-Mobile UK), 178.96/12 (EE), 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |   80 | 31.96/21 (EE), 89.192/16 (EE), 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |  110 | 31.96/21 (EE), 89.192/16 (EE), 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |  143 | 31.96/21 (EE), 89.192/16 (EE), 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |  443 | 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |  993 | 31.96/21 (EE), 89.192/16 (EE), 213.205.224/12 (EE)
-%  EE              | LTE              | gb         |  995 | 31.96/21 (EE), 89.192/16 (EE), 213.205.224/12 (EE)
-%  T-Mobile        | HSPA             | gb         |   25 | 31.96/21 (EE), 149.254/16 (T-Mobile)
-%  T-Mobile        | HSPA             | gb         |   80 | 31.96/21 (EE), 149.254/16 (T-Mobile)
-%  T-Mobile        | HSPA             | gb         |  110 | 31.96/21 (EE), 149.254/16 (T-Mobile)
-%  T-Mobile        | HSPA             | gb         |  143 | 31.96/21 (EE), 149.254/16 (T-Mobile)
-%  Virgin          | HSPA             | gb         |   25 | 149.254/16 (T-Mobile)
-%  Virgin          | HSPA             | gb         |   80 | 149.254/16 (T-Mobile)
-%  Virgin          | HSPA             | gb         |  110 | 149.254/16 (T-Mobile)
-%  Virgin          | HSPA             | gb         |  143 | 149.254/16 (T-Mobile)
-%  giffgaff        | HSPA             | gb         |   21 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |   22 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |   25 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |   80 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  110 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  135 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  143 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  161 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  465 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  585 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  587 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         |  995 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         | 1194 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         | 1723 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         | 5060 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         | 6881 | 82.132/16 (O2)
-%  giffgaff        | HSPA             | gb         | 9001 | 82.132/16 (O2)
-
 
 \section{Control information exchange}
 \label{sec:protocol}
 
-What is common to all candidate protocol changes described above is that they are very limited in size and therefore only sufficient to exchange an opcode. Other protocol details must instead be exchanged either out of band, implicit to the opcode, or explicitly by redefining the meaning of part of the data payload or previously exchanged information. Here we propose one way of exchanging control information as an opcode to bootstrap a full control stream.
+What is common to all candidate protocol changes described above is that they are limited in size and therefore only sufficient to exchange an opcode. Other protocol details must be exchanged either out of band, implicitly to the opcode, or explicitly by redefining the meaning of part of the data payload or previously exchanged information. Here we propose one way of exchanging control information as an opcode to bootstrap a full control stream.
 
 \subsection{Opcode embedding}
 
-A surprising result in our tests is that the \emph{Acknowledgment Number} field without the ACK flag set is passed on all non-proxied connections. As it is a 32-bit value we can allocate part of it (\eg 8 or 16 bits) to signal that the rest of the field is significant. The exact allocation is subject to further discussion, but we suggest using the first 16 bits as \emph{Extension Space} and the others as $Opcode$ (Figure~\ref{fig:header}), carrying the desired opcode. For simultaneous open we can use the same mechanism in both directions.
+A surprising result in our tests is that the \emph{Acknowledgment Number} field without the ACK flag set is passed on all non-proxied connections. As it is a 32-bit value we can use part of it to signal that the rest of the field is significant. The exact allocation is subject to further discussion, but we suggest using the first 16 bits as \emph{Extension Space} and the others as $Opcode$ (Figure~\ref{fig:header}). For \emph{simultaneous open} we can use the same mechanism in both directions.
 
-For acknowledging extensions in SYN-ACK packet we use the Urgent Pointer and Checksum fields. Our tests indicate that neither choice is guaranteed to succeed, therefore we combine the two by redefining their values when SYN=1. We define the Urgent Pointer to be $Opcode_U$ when URG=0 and Checksum to carry a meaning when Urgent Pointer = 0 to get around the cases where one is blocked but the other one is not. Across all networks we tested in our preliminary study, at least one of the choices succeeds.
+For acknowledging extensions in the SYN-ACK packet we use the Urgent Pointer and Checksum fields. Our tests indicate that neither choice is guaranteed to succeed, therefore we combine the two by redefining their values when SYN=1. We define the Urgent Pointer to be $Opcode_U$ when URG=0. If Urgent Pointer is 0, Checksum is the opcode to get around the cases where one is blocked but the other one is not. Across all networks tested in our preliminary study, at least one of the choices succeeds. In the cases when both are usable data can be encoded across them as a single field once the handshake is completed.
 
-Checksum value can not be used directly as an opcode since it changes at every level of NAT. The traditional NAT does a simple recalculation of the checksum~\cite{Egevang:tu}: subtracts the original source address and port number (in some cases also the sequence number) and adds the new values. The received Checksum after \(n\) NAT hops is therefore:
+Checksum value can not be used directly as an opcode since it changes at every level of NAT. The traditional NAT does a simple recalculation of the checksum~\cite{Egevang:tu}: subtracts the original source address and port number (in some cases also the sequence number) and adds the new values. The Checksum after \(n\) NAT hops is:
 
-\vspace{-2mm}
+% \vspace{-4mm}
 \begin{align*}
 Checksum_2 & = Checksum_1 - header_1 + header_2 \\
 Checksum_i & = Checksum_{i-1} - header_{i-1} + header_i \\
  ... \\
 Checksum_n & = Checksum_1 - header_1 + header_n
 \end{align*}
+% \vspace{-2mm}
 
 Here $header$ refers to the fields of the header that change, namely the destination port number, address and sequence number. A previous study~\cite{UntoldMiddlebox2011} found no NATs mangling sequence numbers, but we witnessed a few cases of such behavior. The Opcode can then be encoded as a target checksum so that it is recoverable by a simple binary subtraction of the changing fields (3 to 7 16-bit arithmetic operations in total):
 
-\vspace{-2mm}
+% \vspace{-4mm}
 \begin{align*}
 Checksum_{target} & = Opcode + header_1 \\
 Checksum_n = Opcode_C & = Opcode + header_n
 \end{align*}
+% \vspace{-2mm}
 
 There are two choices for setting checksum to a specific value: invalid checksum or adding padding payload. The latter can only be done when the receiving end is already expecting it, since it should not pass such payload up to the layer above, but this approach keeps a packet valid from network's perspective.
 
-For our prototype we assign the first 16 bits of the payload as \emph{Checksum Correction} to force a specific checksum to maintain validity of a packet. The choice is in line with other extensions which reuse part of data payload~\cite{Mazieres:uz,Bonaventure:wx}. This Checksum Correction field is not delivered to the application. TLV-Encoded (Type-Length-Value) Control Stream can be present in data part~\cite{Bonaventure:wx} of the SYN-ACK packet after the Checksum Correction field.
+For our prototype we assign the first 16 bits of the payload as \emph{Checksum Correction} to force a specific checksum to maintain validity of a packet. The field value is not considered as part of application data. The choice is in line with other extensions which reuse part of data payload~\cite{Mazieres:uz,Bonaventure:wx}. Sending data with the SYN-ACK packet works on all tested cellular networks, but not on most WiFi.
 
-Sending data with the SYN-ACK packet works on all tested cellular networks, but not on most WiFi. For the above header modifications the information either reaches the destination as intended, or the packet is dropped. Finally, on all of our tested networks at least one case succeeds as long as there is no non-transparent proxy for the chosen destination port.
+For the above header modifications the information either reaches the destination as intended, or the packet is dropped. Finally, on all of our tested networks at least one case succeeds as long as there is no non-transparent proxy for the chosen destination port.
 
 \subsection{Bootstrapping the control stream}
 
-We use the embedded opcodes in the handshake to exchange sufficient control information to bootstrap a complete control stream. We extend the three-way handshake with fields shown in Figure~\ref{fig:header}:
+We use the embedded opcodes in the handshake to exchange sufficient control information to bootstrap a complete control stream. After the handshake a higher-bandwidth \emph{Control Channel} can be defined by using TLV (Type-Length-Value) encoding to delimit control information within packet payload~\cite{Bonaventure:wx}. The channel is bootstrapped using an extended three-way handshake with fields shown in Figure~\ref{fig:header}:
 
 \begin{enumerate}
 \item \textbf{SYN}: the active opener sends SYN packet with \emph{$Opcode Namespace$ + $Opcode$} and ACK unset.
@@ -429,24 +372,22 @@ We use the embedded opcodes in the handshake to exchange sufficient control info
 % \vspace{-2mm}
 \caption{Example handshake with extension negotiation}
 \label{fig:handshake}
-\vspace{-4mm}
+% \vspace{-4mm}
 \end{figure}
 
 Figure~\ref{fig:handshake} shows an example handshake. In this case a client (active opener) sends a SYN packet as show above. The packet traverses a middlebox that does not remove the opcode and reaches the Server (passive opener). The Server replies with SYN-ACK with U\_Opcode, but the middlebox discards it. The server then retransmits SYN-ACK with $Opcode_C$ and Checksum Correction bits, delivered to the Client. The client recovers and verifies the received opcode. Hence both endpoints understand the meaning of the opcode, therefore the client replies with an ACK with control information acknowledging reception of the $Opcode$ from the Server.
 
-We witnessed a case of packet splitting where an ACK segment is split to one only acknowledging the received data and another other one with the actual payload. We did not observe a case where a middlebox both passes payload in SYN-ACK packet and splits ACK segments. If the handshake succeeds we need to take a little extra care with the fallback mechanism -- we need to wait for an ACK segment with payload before falling back to vanilla TCP. If the passive opener receives data it can not decode as valid TLV-encoded control information, it falls back to vanilla TCP.
+We witnessed one case of packet splitting where an ACK segment is split to one only acknowledging the received data and another other one with the actual payload. We did not observe a case where a middlebox both passes payload in SYN-ACK packet and splits ACK segments. If the handshake succeeds we need to take a little extra care with the fallback mechanism -- we need to wait for an ACK segment with payload before falling back to vanilla TCP. If the passive opener receives data it can not decode as valid TLV-encoded control information, it falls back to vanilla TCP.
 
 Putting control stream information into packet payload suffers from much the same issues as other proposals to extend TCP option space~\cite{Ramaiah:2012wa}. The premise of our work is that middleboxes should not be aware of the new control streams in the first place and therefore not interfere with them. Currently we focus on exchanging control information within the packet header and leave refinement of the full control channel for future work.
 
 \subsection{Control channel bitrate}
 
-%Covert channels are typically low bitrate in order to make it difficult to detect them. Application-specific ones, especially based on media transcoding can achieve rates from 270 b/s using $\mu TP$ torrent protocol, to 2 kbit/s by encoding data in silent Skype voice call periods, to megabits in wireless environments by inserting hidden data into the padding of frames~\cite{Zielinska:2014fn}.
+Our control channel does not need to protection from steganalysis as it is only used to avoid middlebox interference with end-to-end control information exchange. The bitrate of the channel without redefining part of packet payload for control information is bounded by the size of the TCP header (20 bytes without options), the round trip time (RTT) and the number of packets in flight per RTT. Depending on fields usable for a particular connection as inferred during the handshake, we can use between 16 (either $Opcode_C$ or $Opcode_U$) and 35 bits when using both fields and reserved flags.
 
-Our control channel does not need to protection from steganalysis as it is only used to avoid middlebox interference with end-to-end control information exchange. Bitrate of the channel only using packet headers (\ie without redefining part of packet payload for control information) is therefore bounded by the size of the TCP header (20 bytes without options), the round trip time (RTT) and the number of packets in flight per RTT. Depending on fields usable for a particular connection as inferred during the handshake, we can use between 16 (either $Opcode_C$ or $Opcode_U$) and 35 bits when using both fields and reserved flags.
+For an operating window $cwnd$ (in bytes) a TCP flow has $cwnd/MSS$ data packets per RTT, hence that many headers can carry control data. If \emph{window scaling} option is not used, the maximum \emph{receive window} is 65536 bytes. Using the typical HSPA network RTT of about 100ms the maximum data rate is therefore 5 Mbit/s, reasonable for current networks~\cite{Chen:2012vj}. In this case covert channel bitrate is 7.0 to 15.4 kbit/s, depending on the fields used.
 
-For any given operating window $cwnd$ (in bytes) a TCP flow has $cwnd/MSS$ data packets per RTT, hence that many headers with covert control data. If \emph{window scaling} option is not used, the maximum \emph{receive window} is 65536 bytes. Using the typical HSPA network RTT of about 100ms the maximum data rate is therefore 5 Mbit/s, reasonable for current networks~\cite{Chen:2012vj}. In this case covert channel bitrate is up to 7.0 to 15.4 kbit/s, depending on the fields used.
-
-Otherwise, we can estimate channel bitrate from previously studied 3G and 4G network characteristics~\cite{Chen:2012vj}. The average bandwidth measured for a large TCP transmission ranges from $1.2\pm 0.2$ Mbit/s for a 3G network and $348\pm 141$ ms RTT to $15.6\pm 1.0$ Mbit/s and $125\pm 41$ ms RTT for LTE. Covert channel bitrates for these cases range from $3.7 \pm 0.6$ kbit/s for 3G with one 16-bit field usable to $49.0 \pm 3.1$ kbit/s for LTE and both fields as well as reserved bits usable.
+We can estimate channel bitrate from previously studies of 3G and 4G network characteristics~\cite{Chen:2012vj}. The average bandwidth measured for a large TCP transmission ranges from $1.2\pm 0.2$ Mbit/s for a 3G network and $348\pm 141$ ms RTT to $15.6\pm 1.0$ Mbit/s and $125\pm 41$ ms RTT for LTE. Covert channel bitrates for these cases range from $3.7 \pm 0.6$ kbit/s for 3G with one 16-bit field usable to $49.0 \pm 3.1$ kbit/s for LTE and both fields as well as reserved bits usable.
 
 Finally, the actual amount of information exchanged will depend on the coding scheme and the required reliability guarantees. For reliability in particular, a scheme described in Nusha~\cite{Rutkowska:2004ul} can be used.
 
@@ -457,27 +398,21 @@ For comparison, bitrates achievable by detection resistant schemes using initial
 
 Steganography has been used in the past to hide information within network protocols. The main focus has been on covert channels that violate system's security policy and initial sequence numbers~\cite{Rowland:1997vq}, TCP Timestamps~\cite{Giffin:2002wh} and combinations with IP flags~\cite{Murdoch:2005fz}. There are detection techniques for these methods, however our main goal is to exchange a small amount of control information rather than a genuine covert channel, calling for a different design.
 
-TCP implements an \emph{urgent mechanism} at its core that allows the sending user to make the receiving user to accept some data as \emph{urgent}. The mechanism is often quoted as providing ``out-of-bound'' data delivery even though it is explicitly not designed as a mechanism for sending such data. Furthermore, there are ambiguities regarding the semantics of the urgent pointer, Network Intrusion Detection Systems (NIDS) tend to clear the URG flag and pointer and the general recommendation is against the use of the mechanism~\cite{Gont:2011vi}.
+TCP implements an \emph{urgent mechanism} that allows the sender to make the receiver accept some \emph{urgent data}. The mechanism is often quoted as providing ``out-of-bound'' data delivery and may be compelling to use for control information even though it is explicitly not designed as such. There are ambiguities regarding the semantics of the urgent pointer and Network Intrusion Detection Systems (NIDS) tend to clear the URG flag and pointer. Hence the general recommendation is against the use of the mechanism~\cite{Gont:2011vi}.
 
-AccECN proposal~\cite{Kuhlewind:2014vd} uses an additional reserved bit, overloads the meaning of already assigned ECN~\cite{Floyd:up} and NS~\cite{Ely:uc} bits and redefines Urgent Pointer as Non-Urgent when URG is not set. The idea is highly related to ours, but reserving the field solely for ECN use prevents other extensions from using it. Furthermore, we saw that some networks block such packets, making it especially difficult to use for ECN.
+AccECN~\cite{Kuhlewind:2014vd} uses an additional reserved bit, overloads the meaning of already assigned ECN~\cite{Floyd:up} and NS~\cite{Ely:uc} bits and redefines Urgent Pointer as Non-Urgent when URG is not set. The idea is related to ours, but reserving the field solely for ECN use prevents other extensions from using it. Also, we saw that some networks block such packets, making it especially difficult to use for ECN.
 
 Generic control stream for MPTCP~\cite{Bonaventure:wx} is another alternative. It proposes mapping the control stream into a separate sequence number space and exchanging control data over established subflows, only modifying the MPTCP DSS option to differentiate control and data streams. The underlying assumption, however, is that MPTCP is already deployed and that existing deployments will be compatible with the new specification.
 
-\section{Discussion}
+\section{Discussion and Future Work}
 
-The main points of discussion for \emph{NoTCP} are the same as with all TCP extensions: is it necessary, deployable and forwards-compatible? We have discussed the first two throughout the paper, but the biggest challenge for forwards-compatibility is NoTCP's overloading of header fields instead of using options.
+The main points of discussion for \emph{NoTCP} are the same as with all TCP extensions: is it necessary, deployable and forwards-compatible? We have discussed the first two throughout the paper, but the biggest challenge for forwards-compatibility is NoTCP's overloading of header fields instead of using options. The exact protocol semantics are subject to further testing and discussions. The main goal of this work is to identify potential methods for exchanging control information by hiding it from existing middleboxes.
 
-The exact protocol semantics are subject to further testing and discussions. The main goal of this work is to identify potential methods for exchanging control information by hiding it from existing middleboxes.
+We have left open the question of finding a method to hide such information from non-transparent proxies. The easiest, albeit limited solution is to identify and cache port numbers that allow unmodified traffic. Instead we plan to study commonly found proxy implementations in detail in order to quickly identify them and encode information within their own operating patterns.
 
-More importantly, we have left open the question of finding a method to hide such information from non-transparent proxies. The easiest, albeit limited solution is to identify and cache port numbers that allow unmodified traffic. Instead we plan to study commonly found proxy implementations in detail in order to quickly identify them and encode information within their own operating patterns.
-
-In the long term we believe that each protocol-related standard should explicitly define how it interferes with all header fields. Examples include implicitly extending sequence number space~\cite{Mazieres:uz}, allowing encrypted TCP session to omit the timestamp option, using stronger message integrity checks making checksum field redundant, changing semantics of duplicate ACKs~\cite{Handley:vj,Flach:2013uy} or even simple window size modifications~\cite{Crowcroft:1998dk}.
+In the long term we believe that each protocol-related standard should explicitly define how it affects header fields. Examples include implicitly extending sequence number space~\cite{Mazieres:uz}, allowing encrypted TCP session to omit the timestamp option, using stronger message integrity checks making checksum field redundant, changing semantics of duplicate ACKs~\cite{Handley:vj,Flach:2013uy} or even simple window size modifications~\cite{Crowcroft:1998dk}.
 
 We hope to map such header field modifications by existing extensions as well as network middlebox behavior patterns into an algebraic form as we have done in the simple case of checksum. This way we would not only be able to exchange control information across the network reliably, but also identify network path behavior by looking at its performed operations. Thus extending a protocol would become a matter of defining a new set of such header algebra rules hence simplifying the process of design and testing.
-
-\section{Conclusion}
-
-This research is still in early stages. The end goal is to develop a set of rules for how protocol extensions redefine and how middleboxes modify packet headers and use them to hide information so that middleboxes do not interfere with endpoint behavior. Development of such ruleset would mean that extending a protocol in the future could become near automatic.
 
 More importantly, this paper hopes to motivate the research community to explore the full range of possibilities in this space as well as contribute to our work by downloading our research app and helping to build a comprehensive database of middlebox interference with protocols across different networks.
 
