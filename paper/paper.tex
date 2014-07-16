@@ -99,6 +99,14 @@
 
 \usepackage[breaklinks=true]{hyperref}
 \frenchspacing
+
+\setlength{\paperheight}{11in}
+\setlength{\paperwidth}{8.5in}
+\usepackage[
+  pass,% keep layout unchanged 
+  % showframe,% show the layout
+]{geometry}
+
 \begin{document}
 
 %don't want date printed
@@ -386,11 +394,11 @@ Our control channel does not need to protection from steganalysis as it is only 
 
 For an operating window $cwnd$ (in bytes) a TCP flow has $cwnd/MSS$ data packets per RTT, hence that many headers can carry control data. If \emph{window scaling} option is not used, the maximum \emph{receive window} is 65536 bytes. Using the typical HSPA network RTT of about 100ms the maximum data rate is therefore 5 Mbit/s, reasonable for current networks~\cite{Chen:2012vj}. In this case covert channel bitrate is 7.0 to 15.4 kbit/s, depending on the fields used.
 
-We can estimate channel bitrate from previously studies of 3G and 4G network characteristics~\cite{Chen:2012vj}. The average bandwidth measured for a large TCP transmission ranges from $1.2\pm 0.2$ Mbit/s for a 3G network and $348\pm 141$ ms RTT to $15.6\pm 1.0$ Mbit/s and $125\pm 41$ ms RTT for LTE. Covert channel bitrates for these cases range from $3.7 \pm 0.6$ kbit/s for 3G with one 16-bit field usable to $49.0 \pm 3.1$ kbit/s for LTE and both fields as well as reserved bits usable.
+We can estimate channel bitrate from previously studies of 3G and 4G network characteristics~\cite{Chen:2012vj}. The average bandwidth measured for a large TCP transmission ranges from $1.2\pm 0.2$ Mbit/s for a 3G network and $348\pm 141$ ms RTT to $15.6\pm 1.0$ Mbit/s and $125\pm 41$ ms RTT for LTE. Covert channel bitrates for these cases range from $3.7 \pm 0.6$ kbit/s for 3G with one 16-bit field usable to $49.0 \pm 3.1$ kbit/s for LTE and both fields as well as reserved bits usable. Similarly, maximum bitrate of full-length option field is up to $34.5 \pm 5.7$ kbit/s and $448.2 \pm 28.7$ kbit/s for the two cases respectively.
 
 Finally, the actual amount of information exchanged will depend on the coding scheme and the required reliability guarantees. For reliability in particular, a scheme described in Nusha~\cite{Rutkowska:2004ul} can be used.
 
-For comparison, bitrates achievable by detection resistant schemes using initial sequence numbers are limited by only using the first packet in each connection to fit up to 15 bits of data~\cite{Murdoch:2005fz}. Using the same assumptions as before and establishing connections sequentially results in 150 bit/s when only SYN and SYN-ACK are exchanged, to 75 bit/s with complete handshake and teardown.
+For comparison, bitrates achievable by detection resistant schemes using initial sequence numbers are limited by only using the first packet in each connection to fit up to 15 bits of data~\cite{Murdoch:2005fz}. Using the same assumptions as before and establishing connections sequentially results in 150 bit/s when only SYN and SYN-ACK are exchanged, to 75 bit/s with complete handshake and teardown. 
 
 \section{Related Work}
 \label{sec:related}
