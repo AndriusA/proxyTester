@@ -39,13 +39,23 @@ import android.util.Log;
 import android.net.ConnectivityManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.Date;
+
 
 import com.stericson.RootTools.RootTools;
 import com.stericson.RootTools.execution.Shell;
 import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
+
 import edu.berkeley.icsi.netalyzr.tests.Test;
+import edu.berkeley.icsi.netalyzr.tests.TestState;
+import edu.berkeley.icsi.netalyzr.tests.nat.CheckLocalAddressTest;
+import edu.berkeley.icsi.netalyzr.tests.connectivity.CheckUDPTest;
+import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6Test;
+import edu.berkeley.icsi.netalyzr.tests.connectivity.MTUTest;
+import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
+import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
 
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
@@ -83,6 +93,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 
     protected Integer doInBackground(Void... none) {
         init();
+        buildNetalyzrTests();
         if (!RootTools.hasBinary(mActivity, TESTER_BINARY)) {
             if (RootTools.isRootAvailable() && installNativeBinary(mActivity)) {
                 Log.d(TAG, "Native binary installed");
@@ -197,27 +208,142 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         mActivity.startActivity(intent);
     }
 
+    protected void buildNetalyzrTests() {
+        TestState.getUUID();
+
+        ArrayList<Test> tests = new ArrayList();
+        ArrayList<Test> skippedTests = new ArrayList();
+
+        tests.add(new CheckLocalAddressTest("checkLocalAddr"));
+        tests.add(new CheckUDPTest("checkUDP"));
+        tests.add(new IPv6Test("checkV6"));
+        tests.add(new MTUTest("checkMTU"));
+        tests.add(new IPv6MTUTest("checkMTUV6"));
+        tests.add(new HiddenProxyTest("checkHiddenProxies"));
+
+        for (int i = 0; i < tests.size(); i++) {
+            Test test = (Test) tests.get(i);
+            test.init();
+            if(test.idleMsg == ""){
+                Log.d(TAG, "Never set idle message for test " + test.testName);
+            }
+        }
+
+        try {
+            runNetalyzrTests(tests);
+        } catch (InterruptedException e) {
+            Log.d(TAG, "Test running interrupted");
+        }
+    }
+
+    protected boolean runNetalyzrTests(ArrayList<Test> tests) throws InterruptedException {
+        // Returns false if tests were not run because this client is
+        // not the latest version, true otherwise.
+
+        for(int currentTest = 0; currentTest < tests.size(); ++currentTest){
+            Test test = (Test) tests.get(currentTest);
+
+            // Do not change the following text, it is required for
+            // parsing the transcript in the DB importer. --cpk
+            Log.d(TAG, "");
+            Log.d(TAG, "Running test " + currentTest + ": " + test.testName);
+            Log.d(TAG, "----------------------------");
+
+            // We run each test in a background thread and wait up to
+            // a maximum amount of time specified via each test's
+            // timeout member. If a test is not completed at that
+            // point, we stop waiting for completion and move on to
+            // next test.
+            //
+
+            if (test.isReady()){
+                try {
+                    int sleeptime = 50;
+                    ThreadGroup tg = new ThreadGroup("test-" + currentTest);
+                    Thread currentTestThread = new Thread(tg, test);
+                    long startTime = (new Date()).getTime();
+                    currentTestThread.start();
+                    while (currentTestThread.isAlive()) {
+                        TestState.testsRunning=true;
+                        // A polling/latency compromise for detecting
+                        // completion of individual tests: the first
+                        // completion check happens after 50ms,
+                        // subsequent waits increase iteratively by
+                        // 25ms up to to a maximum of 500ms.  This
+                        // means short tests run MUCH faster while
+                        // long-running tests don't impose a lot of
+                        // polling overhead in this thread.
+                        Thread.sleep(sleeptime);
+                        sleeptime = Math.min(500, sleeptime + 25);
+
+                        if ((new Date()).getTime() - startTime > test.timeout) {
+                            Log.d(TAG, "Test running overlong, skipping/backgrounding");
+                            test.setTimeoutFlag();
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "Test failed with exception", e);
+                }
+            } else {
+                Log.d(TAG, "Test did not initialize properly.");
+            }
+        }
+        TestState.testsRunning=false;
+
+        StringBuffer results = new StringBuffer();
+        StringBuffer url = new StringBuffer();
+        for(Test test : tests){
+            addTestOutput(test, url, results);
+        }
+        Log.i(TAG, results.toString());
+        return true;
+    }
+
+    void addTestOutput(Test test, StringBuffer resultsURL, StringBuffer postEntity) {
+        int resultCode = test.getTestResultCode();
+        if (!test.ignoreResult) {
+            // Update user interface:
+            String idleMsg = "gatherResultsFor";
+            
+            postEntity.append(test.getTestResultString());
+            postEntity.append("\nTime" + test.testName + "=" + test.getDuration() + "\n");
+            postEntity.append("\nignoredTest" + test.testName + "=False\n");
+
+            // If TEST_NOT_EXECUTED or NOT_COMPLETED, 
+            // we assume no post results,
+            // This could be due to the test simply running overly
+            // long, or it could be a problem.
+            if (resultCode != Test.TEST_NOT_EXECUTED && resultCode != (Test.TEST_ERROR | Test.TEST_ERROR_NOT_COMPLETED)) {
+                postEntity.append("\n" + test.getPostResults() + "\n");
+            }
+        } else {
+            postEntity.append("\nignoredTest" + test.testName + "=True\n");
+        }
+    }
+
+
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
-        basicTests.add(new TCPTest("ACK-only", 2));
-        basicTests.add(new TCPTest("URG-only", 3));
-        // basicTests.add(new TCPTest("ACK-URG", 4));
-        basicTests.add(new TCPTest("plain-URG", 5));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
-        basicTests.add(new TCPTest("ACK-checksum", 7));
-        basicTests.add(new TCPTest("ACK-data", 15));
-        // basicTests.add(new TCPTest("URG-URG", 8));
-        basicTests.add(new TCPTest("URG-checksum", 9));
-        basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 8));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
+        // basicTests.add(new TCPTest("ACK-only", 2));
+        // basicTests.add(new TCPTest("URG-only", 3));
+        // // basicTests.add(new TCPTest("ACK-URG", 4));
+        // basicTests.add(new TCPTest("plain-URG", 5));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
+        // basicTests.add(new TCPTest("ACK-checksum", 7));
+        // basicTests.add(new TCPTest("ACK-data", 15));
+        // // basicTests.add(new TCPTest("URG-URG", 8));
+        // basicTests.add(new TCPTest("URG-checksum", 9));
+        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
+        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
+        // // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
+        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
+        // // basicTests.add(new TCPTest("Reserved-est", 12, 8));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         Random rng = new Random(System.currentTimeMillis());
