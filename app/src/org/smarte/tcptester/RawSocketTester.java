@@ -56,6 +56,7 @@ import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6Test;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.MTUTest;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
 import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
+import edu.berkeley.icsi.netalyzr.tests.dns.DNSIPv6SupportTest;
 
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
@@ -147,10 +148,11 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 
             try {
                 // Try runnig the test regardless
-                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
-                if (test.opcode == TCPTest.TEST_GET_GLOBAL_IP && res == true) {
-                    test.extras = mTesterServer.responseExtra;
-                }
+                boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, 
+                    test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
+                // if (test.opcode == TCPTest.TEST_GET_GLOBAL_IP && res == true) {
+                //     test.extras = mTesterServer.responseExtra;
+                // }
                 mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
                 
@@ -209,31 +211,86 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     }
 
     protected void buildNetalyzrTests() {
+        // Netalyzr test order:
+        // - CheckLocalAddressTest("checkLocalAddr")
+        // - CheckUDPTest("checkUDP")
+        // - DNSIPv6SupportTest("checkIPv6DNS")
+        // - IPv6Test("checkV6")
+        // - MTUTest("checkMTU")
+        // - IPv6MTUTest("checkMTUV6")
+        // - HiddenProxyTest("checkHiddenProxies")
         TestState.getUUID();
 
         ArrayList<Test> tests = new ArrayList();
-        ArrayList<Test> skippedTests = new ArrayList();
+        CheckLocalAddressTest localAddressTest = new CheckLocalAddressTest("checkLocalAddr");
+        MTUTest mtuTest = new MTUTest("checkMTU");
+        HiddenProxyTest hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies");
 
-        tests.add(new CheckLocalAddressTest("checkLocalAddr"));
+        tests.add(localAddressTest);
         tests.add(new CheckUDPTest("checkUDP"));
-        tests.add(new IPv6Test("checkV6"));
-        tests.add(new MTUTest("checkMTU"));
-        tests.add(new IPv6MTUTest("checkMTUV6"));
-        tests.add(new HiddenProxyTest("checkHiddenProxies"));
-
-        for (int i = 0; i < tests.size(); i++) {
-            Test test = (Test) tests.get(i);
+        tests.add(mtuTest);
+        tests.add(hiddenProxyTest);
+    
+        for (Test test : tests) {
             test.init();
-            if(test.idleMsg == ""){
-                Log.d(TAG, "Never set idle message for test " + test.testName);
-            }
         }
 
         try {
             runNetalyzrTests(tests);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException e) { 
             Log.d(TAG, "Test running interrupted");
         }
+    }
+
+    protected boolean runNetalyzrTest(Test test, int currentTest) throws InterruptedException {
+        // Do not change the following text, it is required for
+        // parsing the transcript in the DB importer. --cpk
+        Log.d(TAG, "");
+        Log.d(TAG, "Running test " + currentTest + ": " + test.testName);
+        Log.d(TAG, "----------------------------");
+
+        // We run each test in a background thread and wait up to
+        // a maximum amount of time specified via each test's
+        // timeout member. If a test is not completed at that
+        // point, we stop waiting for completion and move on to
+        // next test.
+        //
+
+        if (test.isReady()){
+            try {
+                int sleeptime = 50;
+                ThreadGroup tg = new ThreadGroup("test-" + currentTest);
+                Thread currentTestThread = new Thread(tg, test);
+                long startTime = (new Date()).getTime();
+                currentTestThread.start();
+                while (currentTestThread.isAlive()) {
+                    TestState.testsRunning=true;
+                    // A polling/latency compromise for detecting
+                    // completion of individual tests: the first
+                    // completion check happens after 50ms,
+                    // subsequent waits increase iteratively by
+                    // 25ms up to to a maximum of 500ms.  This
+                    // means short tests run MUCH faster while
+                    // long-running tests don't impose a lot of
+                    // polling overhead in this thread.
+                    Thread.sleep(sleeptime);
+                    sleeptime = Math.min(500, sleeptime + 25);
+
+                    if ((new Date()).getTime() - startTime > test.timeout) {
+                        Log.d(TAG, "Test running overlong, skipping/backgrounding");
+                        test.setTimeoutFlag();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                Log.d(TAG, "Test failed with exception", e);
+                return false;
+            }
+        } else {
+            Log.d(TAG, "Test did not initialize properly.");
+            return false;
+        }
+        return true;
     }
 
     protected boolean runNetalyzrTests(ArrayList<Test> tests) throws InterruptedException {
@@ -242,52 +299,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 
         for(int currentTest = 0; currentTest < tests.size(); ++currentTest){
             Test test = (Test) tests.get(currentTest);
-
-            // Do not change the following text, it is required for
-            // parsing the transcript in the DB importer. --cpk
-            Log.d(TAG, "");
-            Log.d(TAG, "Running test " + currentTest + ": " + test.testName);
-            Log.d(TAG, "----------------------------");
-
-            // We run each test in a background thread and wait up to
-            // a maximum amount of time specified via each test's
-            // timeout member. If a test is not completed at that
-            // point, we stop waiting for completion and move on to
-            // next test.
-            //
-
-            if (test.isReady()){
-                try {
-                    int sleeptime = 50;
-                    ThreadGroup tg = new ThreadGroup("test-" + currentTest);
-                    Thread currentTestThread = new Thread(tg, test);
-                    long startTime = (new Date()).getTime();
-                    currentTestThread.start();
-                    while (currentTestThread.isAlive()) {
-                        TestState.testsRunning=true;
-                        // A polling/latency compromise for detecting
-                        // completion of individual tests: the first
-                        // completion check happens after 50ms,
-                        // subsequent waits increase iteratively by
-                        // 25ms up to to a maximum of 500ms.  This
-                        // means short tests run MUCH faster while
-                        // long-running tests don't impose a lot of
-                        // polling overhead in this thread.
-                        Thread.sleep(sleeptime);
-                        sleeptime = Math.min(500, sleeptime + 25);
-
-                        if ((new Date()).getTime() - startTime > test.timeout) {
-                            Log.d(TAG, "Test running overlong, skipping/backgrounding");
-                            test.setTimeoutFlag();
-                            break;
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "Test failed with exception", e);
-                }
-            } else {
-                Log.d(TAG, "Test did not initialize properly.");
-            }
+            runNetalyzrTest(test, currentTest);
         }
         TestState.testsRunning=false;
 
@@ -347,46 +359,20 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         Random rng = new Random(System.currentTimeMillis());
-        List<InetAddress> localAddresses = getOwnInetAddresses();
-        completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 6969, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
+        // List<InetAddress> localAddresses = getOwnInetAddresses();
+        // completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 6969, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
 
-        for (InetAddress localAddress : localAddresses) {
-            for (TCPTest test : basicTests) {
-                for (int dstPort : serverPorts) {
-                    // Unprivileged random port number in [1025...65536)
-                    int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
-                    completeTests.add(new TCPTest(test, serverAddress, dstPort, localAddress, srcPort));
-                }
-            }
-        }
+        // for (InetAddress localAddress : localAddresses) {
+        //     for (TCPTest test : basicTests) {
+        //         for (int dstPort : serverPorts) {
+        //             // Unprivileged random port number in [1025...65536)
+        //             int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
+        //             completeTests.add(new TCPTest(test, serverAddress, dstPort, localAddress, srcPort));
+        //         }
+        //     }
+        // }
         Log.d(TAG, Integer.toString(completeTests.size()) + " tests selected");
         return completeTests;
-    }
-
-    private List<InetAddress> getOwnInetAddresses() {
-        List<InetAddress> ipAddresses = new ArrayList<InetAddress>();
-        try {
-            Enumeration<NetworkInterface> en;
-            for ( en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
-                NetworkInterface intf = en.nextElement();
-                // Log.d(TAG, "Checking interface " + intf.toString());
-                // Log.d(TAG, "Interface status: " + intf.isLoopback() + intf.isPointToPoint() + intf.isUp());
-                // BUGFIX: removed && !intf.isPointToPoint() - broken on CyanogenMod 10.2 for cellular interface
-                if (!intf.isLoopback() && intf.isUp() ) {
-                    for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
-                        InetAddress inetAddress = enumIpAddr.nextElement();
-                        if (!inetAddress.isLinkLocalAddress()) {
-                            ipAddresses.add(inetAddress);
-                            Log.d(TAG, "Got address " + inetAddress.getHostAddress() + " (interface " + intf.toString() + ")");    
-                        }
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            Log.w(TAG, "Exception while retrieving own IP address", e);
-        }
-
-        return ipAddresses;
     }
 
     private boolean installNativeBinary(Context context) {

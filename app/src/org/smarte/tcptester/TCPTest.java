@@ -23,9 +23,6 @@ import android.os.Parcel;
 
 
 public class TCPTest implements Parcelable {
-    public static final int TEST_GET_GLOBAL_IP = 21;
-
-
     public String name;
     public byte opcode;
     public boolean result = false;
@@ -142,15 +139,7 @@ public class TCPTest implements Parcelable {
             + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
             + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
             + (result == true ? " passed" : " failed");
-        if (opcode == TEST_GET_GLOBAL_IP && extras != null && extras.length == 4) {
-            ret += " ";
-            for (int i = 0; i < 4; i++) {
-                ret += Integer.toString((int)(extras[i] & 0xFF));
-                if (i < 3)
-                    ret += ".";
-            }
-        }
-        else if (extras != null && extras.length > 0) {
+        if (extras != null && extras.length > 0) {
             ret += " ";
             for (byte e : extras)
                 ret += Integer.toBinaryString(e);
