@@ -46,6 +46,9 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import java.util.Set;
 import android.support.v7.app.ActionBar;
 
+import org.smarte.tcptester.R;
+import org.smarte.tcptester.engine.TCPTest;
+
 public class TcpTesterResults extends ActionBarActivity 
 {
     public static final String TAG = "TCPTester";
@@ -93,16 +96,16 @@ public class TcpTesterResults extends ActionBarActivity
         HashMap<Integer, Integer> totalPerPort = new HashMap<Integer, Integer>();
         for (TCPTest result : results) {
             // Don't count the test of getting global address as a test
-            if (result.opcode == TCPTest.TEST_GET_GLOBAL_IP) {
-                if (result.extras == null)
-                    continue;
-                String ip = "";
-                for (int i = 0; i < 4; i++) {
-                    ip += Integer.toString((int)(result.extras[i] & 0xFF)) + (i < 3 ? "." : "");
-                }
-                globalIP.setText(getString(R.string.your_IP) + " " + ip);
-                continue;
-            }
+            // if (result.opcode == TCPTest.TEST_GET_GLOBAL_IP) {
+            //     if (result.extras == null)
+            //         continue;
+            //     String ip = "";
+            //     for (int i = 0; i < 4; i++) {
+            //         ip += Integer.toString((int)(result.extras[i] & 0xFF)) + (i < 3 ? "." : "");
+            //     }
+            //     globalIP.setText(getString(R.string.your_IP) + " " + ip);
+            //     continue;
+            // }
             if (result.result) {
                 Integer count = successPerPort.get(result.dstPort);
                 if (count == null)

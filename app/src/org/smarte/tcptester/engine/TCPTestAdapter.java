@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package org.smarte.tcptester;
+package org.smarte.tcptester.engine;
 
 import android.widget.ArrayAdapter;
 import android.view.View;
@@ -24,6 +24,8 @@ import android.view.ViewGroup;
 import android.view.LayoutInflater;
 import android.widget.TextView;
 import android.widget.ImageView;
+
+import org.smarte.tcptester.R;
 
 public class TCPTestAdapter extends ArrayAdapter<TCPTest> {
     public TCPTestAdapter(Context context, ArrayList<TCPTest> results) {

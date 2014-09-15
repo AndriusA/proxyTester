@@ -28,6 +28,9 @@ import android.view.Menu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.os.Bundle;
+import org.smarte.tcptester.R;
+
+import org.smarte.tcptester.engine.RawSocketTester;
 
 public class TcpTester extends ActionBarActivity implements View.OnClickListener 
 {

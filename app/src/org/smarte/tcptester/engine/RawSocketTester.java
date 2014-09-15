@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package org.smarte.tcptester;
+package org.smarte.tcptester.engine;
 
 import android.os.Build;
 import java.util.ArrayList;
@@ -57,6 +57,9 @@ import edu.berkeley.icsi.netalyzr.tests.connectivity.MTUTest;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
 import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
 import edu.berkeley.icsi.netalyzr.tests.dns.DNSIPv6SupportTest;
+
+import org.smarte.tcptester.R;
+import org.smarte.tcptester.TcpTesterResults;
 
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {

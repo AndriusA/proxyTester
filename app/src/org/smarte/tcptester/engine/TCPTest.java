@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package org.smarte.tcptester;
+package org.smarte.tcptester.engine;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
