@@ -52,6 +52,7 @@ import com.stericson.RootTools.exceptions.RootDeniedException;
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
+import org.smarte.tcptester.engine.TestEngine;
 
 public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 {
@@ -64,28 +65,31 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     private Context mActivity;
     
     private InetAddress mServerAddress;
-    private int[] mServerPorts; 
+    private Integer[] mServerPorts; 
     private ArrayList<TCPTest> mResults;
     private ProgressBar mProgress;
     private TextView mProgressText, mSubmittedResults;
 
-    public RawSocketTester(Activity activity, ProgressBar progress, TextView progressText) {
+    final TestEngine.ProgressCallbackInterface callback;
+
+    public RawSocketTester(TestEngine.ProgressCallbackInterface callback, String testServer, Integer testPorts[], String localAddress) {
         super();
-        mActivity = activity;
-        mResults = new ArrayList<TCPTest>();
-        mProgress = progress;
-        mProgressText = progressText;
-        init();
+        // mActivity = activity;
+        // mResults = new ArrayList<TCPTest>();
+        // mProgress = progress;
+        // mProgressText = progressText;
+        this.callback = callback;
+        init(testServer, testPorts);
     }
 
-    public void init() {
+    public void init(String testServer, Integer testPorts[]) {
         // Only take the first one
         try {
-            mServerAddress = InetAddress.getAllByName("192.95.61.161")[0];
+            mServerAddress = InetAddress.getAllByName(testServer)[0];
         } catch (UnknownHostException e) {
             mServerAddress = null;
         }
-        mServerPorts = new int[]{80, 443, 993, 8000, 5228, 6969};
+        mServerPorts = testPorts;
     }    
 
     protected Integer doInBackground(Void... none) {
@@ -122,7 +126,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         RootTools.runBinary(mActivity, TESTER_BINARY, address+" &");
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
-        mProgress.setMax(tests.size());
+        // mProgress.setMax(tests.size());
         int testNo = 0;
         boolean iptablesFailed = false;
         for (TCPTest test : tests) {
@@ -185,28 +189,14 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     }
 
     protected void onProgressUpdate(Integer... progress) {
-         mProgress.incrementProgressBy(progress[0]);
-         mProgressText.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
+        callback.onProgressUpdate(progress);
     }
 
     protected void onPostExecute(Integer result) {
-        Log.d(TAG, "execution finished, launching resuls activity");
-        super.onPostExecute(result);
-        Intent intent = new Intent(mActivity, TcpTesterResults.class);
-        if (result == Test.TEST_COMPLEX) {
-            intent.putExtra("status", "success");
-        } else if (result == Test.TEST_PROHIBITED) {
-            intent.putExtra("status", "prohibited");
-        } else {
-            intent.putExtra("status", "failed");
-        }
-        intent.putParcelableArrayListExtra("results", mResults);
-        mActivity.startActivity(intent);
-    }
+        return;
+    }    
 
-    
-
-    private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
+    private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Integer[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
         // basicTests.add(new TCPTest("ACK-only", 2));
         // basicTests.add(new TCPTest("URG-only", 3));

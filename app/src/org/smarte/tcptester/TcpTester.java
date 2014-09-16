@@ -31,8 +31,7 @@ import android.os.Bundle;
 import org.smarte.tcptester.R;
 import java.util.concurrent.ExecutionException;
 
-import org.smarte.tcptester.engine.RawSocketTester;
-import org.smarte.tcptester.engine.NetalyzrTester;
+import org.smarte.tcptester.engine.TestEngine;
 
 public class TcpTester extends ActionBarActivity implements View.OnClickListener 
 {
@@ -57,16 +56,7 @@ public class TcpTester extends ActionBarActivity implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        NetalyzrTester netalyzrTester = new NetalyzrTester();
-        netalyzrTester.execute();
-        try {
-            netalyzrTester.get();
-            new RawSocketTester(this, mProgress, mProgressText).execute();
-        } catch (ExecutionException e) {
-            Log.e(TAG, "Tests did not finish, exception ", e);
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Tests did not finish, interrupted ", e);
-        }
+        new TestEngine(this, mProgress, mProgressText).execute();
     }
 
     @Override

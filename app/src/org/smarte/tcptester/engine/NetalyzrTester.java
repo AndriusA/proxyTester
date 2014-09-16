@@ -73,11 +73,22 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
     private CheckLocalAddressTest _localAddressTest;
     private MTUTest _mtuTest;
     private HiddenProxyTest _hiddenProxyTest;
+    private Integer _testPorts[];
 
+    final TestEngine.ProgressCallbackInterface callback;
 
-    public NetalyzrTester() {
+    public NetalyzrTester(TestEngine.ProgressCallbackInterface callback, Integer testPorts[]) {
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
+        _testPorts = testPorts;
+        this.callback = callback;
+    }
+
+    public NetalyzrTester(TestEngine.ProgressCallbackInterface callback) {
+        proxiedPorts = new ArrayList<Integer>();
+        unproxiedPorts = new ArrayList<Integer>();
+        _testPorts = new Integer[]{80, 443, 993, 8000, 5228, 6969};
+        this.callback = callback;
     }
 
     protected Integer doInBackground(Void... none) {
@@ -98,8 +109,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
         _mtuTest = new MTUTest("checkMTU");
         _tests.add(_mtuTest);
 
-        Integer proxyPorts[] = new Integer[]{80, 443, 993, 8000, 5228, 6969};
-        _hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies", proxyPorts);
+        _hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies", _testPorts);
         _tests.add(_hiddenProxyTest);
     
         for (Test test : _tests) {
