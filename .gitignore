@@ -7,3 +7,4 @@ app/jni/temp/
 app/build.xml
 app/*.properties
 app/proguard-project.txt
+*.sublime-workspace
