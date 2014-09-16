@@ -48,16 +48,8 @@ import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.exceptions.RootDeniedException;
 
-import edu.berkeley.icsi.netalyzr.tests.Test;
-import edu.berkeley.icsi.netalyzr.tests.TestState;
-import edu.berkeley.icsi.netalyzr.tests.nat.CheckLocalAddressTest;
-import edu.berkeley.icsi.netalyzr.tests.connectivity.CheckUDPTest;
-import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6Test;
-import edu.berkeley.icsi.netalyzr.tests.connectivity.MTUTest;
-import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
-import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
-import edu.berkeley.icsi.netalyzr.tests.dns.DNSIPv6SupportTest;
 
+import edu.berkeley.icsi.netalyzr.tests.Test;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
 
@@ -83,6 +75,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         mResults = new ArrayList<TCPTest>();
         mProgress = progress;
         mProgressText = progressText;
+        init();
     }
 
     public void init() {
@@ -96,8 +89,6 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     }    
 
     protected Integer doInBackground(Void... none) {
-        init();
-        buildNetalyzrTests();
         if (!RootTools.hasBinary(mActivity, TESTER_BINARY)) {
             if (RootTools.isRootAvailable() && installNativeBinary(mActivity)) {
                 Log.d(TAG, "Native binary installed");
@@ -196,7 +187,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     protected void onProgressUpdate(Integer... progress) {
          mProgress.incrementProgressBy(progress[0]);
          mProgressText.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
-     }
+    }
 
     protected void onPostExecute(Integer result) {
         Log.d(TAG, "execution finished, launching resuls activity");
@@ -213,130 +204,7 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         mActivity.startActivity(intent);
     }
 
-    protected void buildNetalyzrTests() {
-        // Netalyzr test order:
-        // - CheckLocalAddressTest("checkLocalAddr")
-        // - CheckUDPTest("checkUDP")
-        // - DNSIPv6SupportTest("checkIPv6DNS")
-        // - IPv6Test("checkV6")
-        // - MTUTest("checkMTU")
-        // - IPv6MTUTest("checkMTUV6")
-        // - HiddenProxyTest("checkHiddenProxies")
-        TestState.getUUID();
-
-        ArrayList<Test> tests = new ArrayList();
-        CheckLocalAddressTest localAddressTest = new CheckLocalAddressTest("checkLocalAddr");
-        MTUTest mtuTest = new MTUTest("checkMTU");
-        HiddenProxyTest hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies");
-
-        tests.add(localAddressTest);
-        tests.add(new CheckUDPTest("checkUDP"));
-        tests.add(mtuTest);
-        tests.add(hiddenProxyTest);
     
-        for (Test test : tests) {
-            test.init();
-        }
-
-        try {
-            runNetalyzrTests(tests);
-        } catch (InterruptedException e) { 
-            Log.d(TAG, "Test running interrupted");
-        }
-    }
-
-    protected boolean runNetalyzrTest(Test test, int currentTest) throws InterruptedException {
-        // Do not change the following text, it is required for
-        // parsing the transcript in the DB importer. --cpk
-        Log.d(TAG, "");
-        Log.d(TAG, "Running test " + currentTest + ": " + test.testName);
-        Log.d(TAG, "----------------------------");
-
-        // We run each test in a background thread and wait up to
-        // a maximum amount of time specified via each test's
-        // timeout member. If a test is not completed at that
-        // point, we stop waiting for completion and move on to
-        // next test.
-        //
-
-        if (test.isReady()){
-            try {
-                int sleeptime = 50;
-                ThreadGroup tg = new ThreadGroup("test-" + currentTest);
-                Thread currentTestThread = new Thread(tg, test);
-                long startTime = (new Date()).getTime();
-                currentTestThread.start();
-                while (currentTestThread.isAlive()) {
-                    TestState.testsRunning=true;
-                    // A polling/latency compromise for detecting
-                    // completion of individual tests: the first
-                    // completion check happens after 50ms,
-                    // subsequent waits increase iteratively by
-                    // 25ms up to to a maximum of 500ms.  This
-                    // means short tests run MUCH faster while
-                    // long-running tests don't impose a lot of
-                    // polling overhead in this thread.
-                    Thread.sleep(sleeptime);
-                    sleeptime = Math.min(500, sleeptime + 25);
-
-                    if ((new Date()).getTime() - startTime > test.timeout) {
-                        Log.d(TAG, "Test running overlong, skipping/backgrounding");
-                        test.setTimeoutFlag();
-                        break;
-                    }
-                }
-            } catch (Exception e) {
-                Log.d(TAG, "Test failed with exception", e);
-                return false;
-            }
-        } else {
-            Log.d(TAG, "Test did not initialize properly.");
-            return false;
-        }
-        return true;
-    }
-
-    protected boolean runNetalyzrTests(ArrayList<Test> tests) throws InterruptedException {
-        // Returns false if tests were not run because this client is
-        // not the latest version, true otherwise.
-
-        for(int currentTest = 0; currentTest < tests.size(); ++currentTest){
-            Test test = (Test) tests.get(currentTest);
-            runNetalyzrTest(test, currentTest);
-        }
-        TestState.testsRunning=false;
-
-        StringBuffer results = new StringBuffer();
-        StringBuffer url = new StringBuffer();
-        for(Test test : tests){
-            addTestOutput(test, url, results);
-        }
-        Log.i(TAG, results.toString());
-        return true;
-    }
-
-    void addTestOutput(Test test, StringBuffer resultsURL, StringBuffer postEntity) {
-        int resultCode = test.getTestResultCode();
-        if (!test.ignoreResult) {
-            // Update user interface:
-            String idleMsg = "gatherResultsFor";
-            
-            postEntity.append(test.getTestResultString());
-            postEntity.append("\nTime" + test.testName + "=" + test.getDuration() + "\n");
-            postEntity.append("\nignoredTest" + test.testName + "=False\n");
-
-            // If TEST_NOT_EXECUTED or NOT_COMPLETED, 
-            // we assume no post results,
-            // This could be due to the test simply running overly
-            // long, or it could be a problem.
-            if (resultCode != Test.TEST_NOT_EXECUTED && resultCode != (Test.TEST_ERROR | Test.TEST_ERROR_NOT_COMPLETED)) {
-                postEntity.append("\n" + test.getPostResults() + "\n");
-            }
-        } else {
-            postEntity.append("\nignoredTest" + test.testName + "=True\n");
-        }
-    }
-
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, int[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
