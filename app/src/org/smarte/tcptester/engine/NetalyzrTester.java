@@ -78,6 +78,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
     final TestEngine.ProgressCallbackInterface callback;
 
     public NetalyzrTester(TestEngine.ProgressCallbackInterface callback, Integer testPorts[]) {
+        Log.d(TAG, "NetalyzrTester created with ports");
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
         _testPorts = testPorts;
@@ -85,6 +86,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
     }
 
     public NetalyzrTester(TestEngine.ProgressCallbackInterface callback) {
+        Log.d(TAG, "NetalyzrTester created");
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
         _testPorts = new Integer[]{80, 443, 993, 8000, 5228, 6969};
@@ -100,6 +102,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
         // - MTUTest("checkMTU")
         // - IPv6MTUTest("checkMTUV6")
         // - HiddenProxyTest("checkHiddenProxies")
+        Log.d(TAG, "Get Netalyzr UUID");
         TestState.getUUID();
 
         _tests = new ArrayList();
@@ -112,6 +115,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
         _hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies", _testPorts);
         _tests.add(_hiddenProxyTest);
     
+        Log.d(TAG, "Netalyzr initializing tets");
         for (Test test : _tests) {
             test.init();
         }
@@ -225,9 +229,7 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
     }
 
     protected boolean runNetalyzrTests(ArrayList<Test> tests) throws InterruptedException {
-        // Returns false if tests were not run because this client is
-        // not the latest version, true otherwise.
-
+        Log.d(TAG, "Launching tests sequantially");
         for(int currentTest = 0; currentTest < tests.size(); ++currentTest){
             Test test = (Test) tests.get(currentTest);
             runNetalyzrTest(test, currentTest);

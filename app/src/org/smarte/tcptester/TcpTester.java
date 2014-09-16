@@ -56,7 +56,8 @@ public class TcpTester extends ActionBarActivity implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        new TestEngine(this, mProgress, mProgressText).execute();
+        TestEngine t = new TestEngine(this, mProgress, mProgressText);
+        t.runTests();
     }
 
     @Override

@@ -72,10 +72,12 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
 
     final TestEngine.ProgressCallbackInterface callback;
 
-    public RawSocketTester(TestEngine.ProgressCallbackInterface callback, String testServer, Integer testPorts[], String localAddress) {
+    public RawSocketTester(Context activity, TestEngine.ProgressCallbackInterface callback,
+        String testServer, Integer testPorts[], String localAddress)
+    {
         super();
-        // mActivity = activity;
-        // mResults = new ArrayList<TCPTest>();
+        mActivity = activity;
+        mResults = new ArrayList<TCPTest>();
         // mProgress = progress;
         // mProgressText = progressText;
         this.callback = callback;

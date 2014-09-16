@@ -41,13 +41,15 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
+import android.location.LocationManager;
+import android.location.Location;
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
 import org.smarte.tcptester.TcpTester;
 
-public class TestEngine extends AsyncTask<Void, Integer, Integer>
+public class TestEngine
 {
     public static final String TAG = TcpTester.TAG;
 	public static final String TestServer = "192.95.61.161";
@@ -75,12 +77,17 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         };
     }
 
-    protected Integer doInBackground(Void... none) {
-        NetalyzrTester netalyzrTester = new NetalyzrTester(mCallback, TestPorts);
+    public void runTests() {
+        NetalyzrTester netalyzrTester = new NetalyzrTester(mCallback);
+        Log.d(TAG, "Launch Netalyzr tests");
         netalyzrTester.execute();
+        getCoarseLocation();
         try {
+            Log.d(TAG, "Waiting for Netalyzr tets to finish");
             netalyzrTester.get();
-            RawSocketTester rawSocketTester = new RawSocketTester(mCallback, TestServer, TestPorts, netalyzrTester.localAddress);
+            //FIXME: make sure values needed by RawSocketTester are set in netalyzrTester before continuing
+            RawSocketTester rawSocketTester = new RawSocketTester(mActivity, mCallback, TestServer, TestPorts, netalyzrTester.localAddress);
+            Log.d(TAG, "Launch RawSocketTester tests");
             rawSocketTester.execute();
             rawSocketTester.get();
         } catch (ExecutionException e) {
@@ -88,31 +95,47 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         } catch (InterruptedException e) {
             Log.e(TAG, "Tests did not finish, interrupted ", e);
         }
-        return 0;
     }
     
-    protected void onProgressUpdate(Integer... progress) {
-         mProgress.incrementProgressBy(progress[0]);
-         mProgressText.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
-    }
+    // protected void onProgressUpdate(Integer... progress) {
+    //      mProgress.incrementProgressBy(progress[0]);
+    //      mProgressText.setText("Running Tests: " + Integer.toString(progress[1]) + "/" + Integer.toString(progress[2]));
+    // }
 
-    protected void onPostExecute(Integer result) {
-        Log.d(TAG, "execution finished, launching resuls activity");
-        super.onPostExecute(result);
-        Intent intent = new Intent(mActivity, TcpTesterResults.class);
-        if (result == Test.TEST_COMPLEX) {
-            intent.putExtra("status", "success");
-        } else if (result == Test.TEST_PROHIBITED) {
-            intent.putExtra("status", "prohibited");
-        } else {
-            intent.putExtra("status", "failed");
-        }
-        intent.putParcelableArrayListExtra("results", mResults);
-        mActivity.startActivity(intent);
-    }
+    // protected void onPostExecute(Integer result) {
+    //     Log.d(TAG, "execution finished, launching resuls activity");
+    //     super.onPostExecute(result);
+    //     Intent intent = new Intent(mActivity, TcpTesterResults.class);
+    //     if (result == Test.TEST_COMPLEX) {
+    //         intent.putExtra("status", "success");
+    //     } else if (result == Test.TEST_PROHIBITED) {
+    //         intent.putExtra("status", "prohibited");
+    //     } else {
+    //         intent.putExtra("status", "failed");
+    //     }
+    //     intent.putParcelableArrayListExtra("results", mResults);
+    //     mActivity.startActivity(intent);
+    // }
 
-    //define callback interface
+    // //define callback interface
     public interface ProgressCallbackInterface {
         void onProgressUpdate(Integer... progress);
+    }
+
+    private void getCoarseLocation() {
+        LocationManager locationManager = (LocationManager) mActivity.getSystemService(mActivity.LOCATION_SERVICE);
+        String locationProvider = LocationManager.NETWORK_PROVIDER;
+        // Or use LocationManager.GPS_PROVIDER
+        Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
+        double lat, lon;
+        try {
+            lat = lastKnownLocation.getLatitude();
+            lon = lastKnownLocation.getLongitude();
+        } catch (NullPointerException e) {
+            lat = -1.0;
+            lon = -1.0;
+        }
+        Log.d(TAG, "Last known location: " + Double.toString(lat) + ":" + Double.toString(lon));
+        return;
     }
 }
