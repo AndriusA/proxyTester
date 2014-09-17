@@ -40,6 +40,8 @@ import android.net.ConnectivityManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Date;
+import android.os.Handler;
+import android.os.Message;
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import edu.berkeley.icsi.netalyzr.tests.TestState;
@@ -55,7 +57,7 @@ import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTester;
 import org.smarte.tcptester.TcpTesterResults;
 
-public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
+public class NetalyzrTester implements Runnable
 {
     public static final String TAG = TcpTester.TAG;
     // Address info
@@ -75,25 +77,29 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
     private HiddenProxyTest _hiddenProxyTest;
     private Integer _testPorts[];
 
-    final TestEngine.ProgressCallbackInterface callback;
+    private Handler mHandler;
 
-    public NetalyzrTester(TestEngine.ProgressCallbackInterface callback, Integer testPorts[]) {
+    public boolean done;
+
+    public NetalyzrTester(Handler handler, Integer testPorts[]) {
         Log.d(TAG, "NetalyzrTester created with ports");
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
         _testPorts = testPorts;
-        this.callback = callback;
+        mHandler = handler;
     }
 
-    public NetalyzrTester(TestEngine.ProgressCallbackInterface callback) {
+    public NetalyzrTester(Handler handler) {
         Log.d(TAG, "NetalyzrTester created");
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
         _testPorts = new Integer[]{80, 443, 993, 8000, 5228, 6969};
-        this.callback = callback;
+        mHandler = handler;
+        done = false;
     }
 
-    protected Integer doInBackground(Void... none) {
+    @Override
+    public void run() {
         // Netalyzr test order:
         // - CheckLocalAddressTest("checkLocalAddr")
         // - CheckUDPTest("checkUDP")
@@ -120,62 +126,24 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
             test.init();
         }
 
+        Message msg = new Message();
         try {
             runNetalyzrTests(_tests);
         } catch (InterruptedException e) { 
             Log.d(TAG, "Test running interrupted");
-            return Test.TEST_ERROR | Test.TEST_ERROR_NOT_COMPLETED;
+            msg.what = TestEngine.TESTSUITE_COMPLETED;
+            mHandler.sendMessage(msg);
         }
 
-        return Test.TEST_COMPLEX;
-    }
+        onPostExecute();
+        msg.what = TestEngine.TESTSUITE_COMPLETED;
+        mHandler.sendMessage(msg);
 
-    protected void onProgressUpdate(Integer... progress) {
-    }
-
-    protected void onPostExecute(Integer result) {
-        StringBuffer results = new StringBuffer();
-        StringBuffer url = new StringBuffer();
-        for(Test test : _tests){
-            addTestOutput(test, url, results);
+        synchronized (this) {
+            done = true;
+            notifyAll();
         }
-        // Log.i(TAG, results.toString());
-
-        localAddress = _localAddressTest.localClientAddr;
-        globalAddress = _localAddressTest.globalClientAddr;
-        mtuProblem = _mtuTest.pathMTUProblem;
-        sendMTU = _mtuTest.sendMTU;
-        recvMTU = _mtuTest.recvMTU;
-        mtuBottleneckAddress = _mtuTest.bottleneckIP;
-        proxiedPorts = _hiddenProxyTest.proxiedPorts;
-        unproxiedPorts = _hiddenProxyTest.unproxiedPorts;
-
-        printResults();
     }
-
-    private void printResults() {
-        Log.d(TAG, "Addresses:");
-        Log.d(TAG, "----------");
-        Log.d(TAG, "Local IP address: " + localAddress);
-        Log.d(TAG, "Global IP address: " + globalAddress);
-        Log.d(TAG, "MTU:");
-        Log.d(TAG, "----------");
-        Log.d(TAG, "send MTU = " + Integer.toString(sendMTU));
-        Log.d(TAG, "recv MTU = " + Integer.toString(recvMTU));
-        if (mtuProblem)
-            Log.d(TAG, "MTU bottleneck address " + mtuBottleneckAddress);
-        Log.d(TAG, "Non-transparent proxying:");
-        Log.d(TAG, "----------");
-        String sProxiedPorts = "";
-        for (Integer port : proxiedPorts)
-            sProxiedPorts += port.toString() + "; ";
-        Log.d(TAG, "Proxied = " + sProxiedPorts);
-        String sUnproxiedPorts = "";
-        for (Integer port : unproxiedPorts)
-            sUnproxiedPorts += port.toString() + "; ";
-        Log.d(TAG, "Unproxied = " + sUnproxiedPorts);
-    }
-
 
     protected boolean runNetalyzrTest(Test test, int currentTest) throws InterruptedException {
         // Do not change the following text, it is required for
@@ -233,10 +201,55 @@ public class NetalyzrTester extends AsyncTask<Void, Integer, Integer>
         for(int currentTest = 0; currentTest < tests.size(); ++currentTest){
             Test test = (Test) tests.get(currentTest);
             runNetalyzrTest(test, currentTest);
-            publishProgress(1, currentTest, tests.size());
+            Message msg = new Message();
+            msg.what = TestEngine.TEST_COMPLETED;
+            mHandler.sendMessage(msg);
         }
         TestState.testsRunning=false;
         return true;
+    }
+
+    void onPostExecute() {
+        StringBuffer results = new StringBuffer();
+        StringBuffer url = new StringBuffer();
+        for(Test test : _tests){
+            addTestOutput(test, url, results);
+        }
+        // Log.i(TAG, results.toString());
+
+        localAddress = _localAddressTest.localClientAddr;
+        globalAddress = _localAddressTest.globalClientAddr;
+        mtuProblem = _mtuTest.pathMTUProblem;
+        sendMTU = _mtuTest.sendMTU;
+        recvMTU = _mtuTest.recvMTU;
+        mtuBottleneckAddress = _mtuTest.bottleneckIP;
+        proxiedPorts = _hiddenProxyTest.proxiedPorts;
+        unproxiedPorts = _hiddenProxyTest.unproxiedPorts;
+
+        printResults();
+    }
+
+    void printResults() {
+        Log.d(TAG, "Addresses:");
+        Log.d(TAG, "----------");
+        Log.d(TAG, "Local IP address: " + localAddress);
+        Log.d(TAG, "Global IP address: " + globalAddress);
+        Log.d(TAG, "MTU:");
+        Log.d(TAG, "----------");
+        Log.d(TAG, "send MTU = " + Integer.toString(sendMTU));
+        Log.d(TAG, "recv MTU = " + Integer.toString(recvMTU));
+        if (mtuProblem)
+            Log.d(TAG, "MTU bottleneck address " + mtuBottleneckAddress);
+        Log.d(TAG, "Non-transparent proxying:");
+        Log.d(TAG, "----------");
+        String sProxiedPorts = "";
+        for (Integer port : proxiedPorts)
+            sProxiedPorts += port.toString() + "; ";
+        Log.d(TAG, "Proxied = " + sProxiedPorts);
+        String sUnproxiedPorts = "";
+        for (Integer port : unproxiedPorts)
+            sUnproxiedPorts += port.toString() + "; ";
+        Log.d(TAG, "Unproxied = " + sUnproxiedPorts);
     }
 
     void addTestOutput(Test test, StringBuffer resultsURL, StringBuffer postEntity) {

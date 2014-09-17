@@ -40,6 +40,8 @@ import android.net.ConnectivityManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Date;
+import android.os.Handler;
+import android.os.Message;
 
 
 import com.stericson.RootTools.RootTools;
@@ -54,7 +56,7 @@ import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
 import org.smarte.tcptester.engine.TestEngine;
 
-public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
+public class RawSocketTester implements Runnable
 {
     public static final String TAG = "TCPTester";
     private static final String TESTER_BINARY = "tcptester";
@@ -70,17 +72,17 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
     private ProgressBar mProgress;
     private TextView mProgressText, mSubmittedResults;
 
-    final TestEngine.ProgressCallbackInterface callback;
+    private Handler mHandler;
+    public boolean done;
 
-    public RawSocketTester(Context activity, TestEngine.ProgressCallbackInterface callback,
+    public RawSocketTester(Context activity, Handler handler,
         String testServer, Integer testPorts[], String localAddress)
     {
         super();
         mActivity = activity;
         mResults = new ArrayList<TCPTest>();
-        // mProgress = progress;
-        // mProgressText = progressText;
-        this.callback = callback;
+        mHandler = handler;
+        done = false;
         init(testServer, testPorts);
     }
 
@@ -94,30 +96,35 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         mServerPorts = testPorts;
     }    
 
-    protected Integer doInBackground(Void... none) {
+    @Override
+    public void run() {
         if (!RootTools.hasBinary(mActivity, TESTER_BINARY)) {
             if (RootTools.isRootAvailable() && installNativeBinary(mActivity)) {
                 Log.d(TAG, "Native binary installed");
             } else {
                 Log.d(TAG, "Installing binary failed");
-                return Test.TEST_PROHIBITED;
+                onPostExecute(TestEngine.TESTSUITE_ERROR_PROHIBITED);
+                return;
             }
         } else {
             Log.d(TAG, "Native binary already exists");
         }
 
         if (!RootTools.isRootAvailable() || !RootTools.isAccessGiven()) {
-            return Test.TEST_PROHIBITED;
+            onPostExecute(TestEngine.TESTSUITE_ERROR_PROHIBITED);
+            return;
         }
         
         if (mServerAddress == null) {
-            return Test.TEST_ERROR | Test.TEST_ERROR_UNKNOWN_HOST;
+            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+            return;
         }
         ConnectivityManager connMgr = (ConnectivityManager) mActivity.getSystemService(mActivity.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if ( networkInfo == null || !networkInfo.isConnected() ) {
             Log.d(TAG, "Fatal: Device is currently offline");
-            return Test.TEST_ERROR | Test.TEST_ERROR_UNAVAIL;
+            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+            return;
         }
             
         mTesterServer = new SocketTesterServer();
@@ -132,9 +139,12 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         int testNo = 0;
         boolean iptablesFailed = false;
         for (TCPTest test : tests) {
-            if (isCancelled() || iptablesFailed) break;
+            if (iptablesFailed) break;
             testNo++;
-            publishProgress(1, testNo, tests.size());
+            Message msg = new Message();
+            msg.what = TestEngine.TEST_COMPLETED;
+            mHandler.sendMessage(msg);
+            // publishProgress(1, testNo, tests.size());
             Log.d(TAG, "Running test " + test.name);
 
             boolean iptablesAdded = false;
@@ -150,12 +160,9 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
                 // Try runnig the test regardless
                 boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, 
                     test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
-                // if (test.opcode == TCPTest.TEST_GET_GLOBAL_IP && res == true) {
-                //     test.extras = mTesterServer.responseExtra;
-                // }
                 mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
-                
+                Log.d(TAG, "Exception caught when running test: ", e);
             }
 
             try {
@@ -185,18 +192,12 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         Log.i(TAG, "Test complete");
         if (iptablesFailed) {
             Log.i(TAG, "Tests aborted due to iptables failure");
-            return Test.TEST_ERROR | Test.TEST_ERROR_IO;
+            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+            return;
         }
-        return Test.TEST_COMPLEX; 
-    }
-
-    protected void onProgressUpdate(Integer... progress) {
-        callback.onProgressUpdate(progress);
-    }
-
-    protected void onPostExecute(Integer result) {
+        onPostExecute(TestEngine.TESTSUITE_COMPLETED);
         return;
-    }    
+    }
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Integer[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
@@ -236,6 +237,16 @@ public class RawSocketTester extends AsyncTask<Void, Integer, Integer>
         // }
         Log.d(TAG, Integer.toString(completeTests.size()) + " tests selected");
         return completeTests;
+    }
+
+    private void onPostExecute(int returnCode) {
+        Message returnMessage = new Message();
+        returnMessage.what = returnCode;
+        mHandler.sendMessage(returnMessage);
+        synchronized(this) {
+            done = true;
+            notifyAll();
+        }
     }
 
     private boolean installNativeBinary(Context context) {
