@@ -23,22 +23,49 @@ import android.os.Parcel;
 
 
 public class TCPTest implements Parcelable {
+    //RawSocketTester tests
+    public static final int ACK_ONLY = 2;
+    public static final int URG_ONLY = 3;
+    public static final int ACK_URG = 4;
+    public static final int PLAIN_URG = 5;
+    public static final int ACK_CHECKSUM_INCORRECT = 6;
+    public static final int ACK_CHECKSUM = 7;
+    public static final int ACK_DATA = 15;
+    public static final int URG_URG = 8;
+    public static final int URG_CHECKSUM = 9;
+    public static final int URG_CHECKSUM_INCORRECT = 10;
+    public static final int RESERVED_SYN = 11;
+    public static final int RESERVED_EST = 12;
+    public static final int ACK_CHECKSUM_INCORRECT_SEQ = 13;
+
+    //Netalyzr tests
+    public static final int CHECK_LOCAL_ADDRESS = 31;
+    public static final int CHECK_UDP = 32;
+    public static final int DNS_IPV6_SUPPORT = 33;
+    public static final int IPV6 = 34;
+    public static final int MTU = 35;
+    public static final int IPV6_MTU = 36;
+    public static final int HIDDEN_PROXY = 37;
+
+
     public String name;
     public byte opcode;
     public boolean result = false;
-    public byte[] extras;
+    public String resultExtras;
     public InetAddress src;
     public int srcPort;
     public InetAddress dst;
     public int dstPort;
+
+
+
     public TCPTest(String name, int opcode) {
         this.name = name;
         this.opcode = (byte) opcode;
     }
-    public TCPTest(String name, int opcode, int extras) {
+    public TCPTest(String name, int opcode, String resultExtras) {
         this(name, opcode);
-        this.extras = new byte[1];
-        this.extras[0] = (byte)extras;
+        this.resultExtras = resultExtras;
     }
     public TCPTest(String name, int opcode, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
         this(name, opcode);
@@ -47,6 +74,15 @@ public class TCPTest implements Parcelable {
         this.src = src;
         this.srcPort = srcPort;
     }
+    public TCPTest(String name, int opcode, InetAddress dst, int dstPort, InetAddress src, int srcPort, boolean result) {
+        this(name, opcode, dst, dstPort, src, srcPort);
+        this.result = result;
+    }
+    public TCPTest(String name, int opcode, InetAddress dst, int dstPort, InetAddress src, int srcPort, boolean result, String resultExtras) {
+        this(name, opcode, dst, dstPort, src, srcPort, result);
+        this.resultExtras = resultExtras;
+    }
+
     public TCPTest(TCPTest t) {
         this.name = t.name;
         this.opcode = t.opcode;
@@ -55,7 +91,7 @@ public class TCPTest implements Parcelable {
         this.dst = t.dst;
         this.dstPort = t.dstPort;
         this.result = t.result;
-        this.extras = t.extras;
+        this.resultExtras = t.resultExtras;
     }
     public TCPTest(TCPTest t, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
         this(t);
@@ -68,11 +104,10 @@ public class TCPTest implements Parcelable {
         this(t);
         this.result = result;
     }
-    public TCPTest(TCPTest t, boolean result, int extras) {
+    public TCPTest(TCPTest t, boolean result, String resultExtras) {
         this(t);
         this.result = result;
-        this.extras = new byte[1];
-        this.extras[0] = (byte)extras;
+        this.resultExtras = resultExtras;
     }
 
     public int describeContents() {
@@ -83,11 +118,7 @@ public class TCPTest implements Parcelable {
         name = in.readString();
         opcode = in.readByte();
         result = in.readByte() == 1 ? true : false;
-        int extrasLength = in.readInt();
-        if (extrasLength > 0) {
-            extras = new byte[extrasLength];
-            in.readByteArray(extras);
-        }
+        resultExtras = in.readString();
         byte[] tempSrc = new byte[4];
         in.readByteArray(tempSrc);
         try {
@@ -111,12 +142,7 @@ public class TCPTest implements Parcelable {
         out.writeString(name);
         out.writeByte(opcode);
         out.writeByte((byte) (result ? 1 : 0));
-        if (extras != null) {
-            out.writeInt(extras.length);
-            out.writeByteArray(extras);
-        } else {
-            out.writeInt(0);
-        }
+        out.writeString(resultExtras);
         out.writeByteArray(src.getAddress());
         out.writeInt(srcPort);
         out.writeByteArray(dst.getAddress());
@@ -139,10 +165,9 @@ public class TCPTest implements Parcelable {
             + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
             + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
             + (result == true ? " passed" : " failed");
-        if (extras != null && extras.length > 0) {
+        if (resultExtras.length() > 0) {
             ret += " ";
-            for (byte e : extras)
-                ret += Integer.toBinaryString(e);
+            ret += resultExtras;
         }
         ret +=  "\n";
         return ret;

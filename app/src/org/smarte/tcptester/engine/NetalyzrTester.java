@@ -209,7 +209,7 @@ public class NetalyzrTester implements Runnable
         return true;
     }
 
-    void onPostExecute() {
+    ArrayList<TCPTest> onPostExecute() {
         StringBuffer results = new StringBuffer();
         StringBuffer url = new StringBuffer();
         for(Test test : _tests){
@@ -226,7 +226,59 @@ public class NetalyzrTester implements Runnable
         proxiedPorts = _hiddenProxyTest.proxiedPorts;
         unproxiedPorts = _hiddenProxyTest.unproxiedPorts;
 
+        InetAddress localAddr = null;
+        InetAddress mtuTestServer = null;
+        try {
+            localAddr = InetAddress.getAllByName(localAddress)[0];
+        } catch (Exception e) {
+            Log.w(TAG, "Error resolving " + localAddress, e);
+        }
+        try {
+            mtuTestServer = InetAddress.getAllByName(_mtuTest.testServer)[0];
+        } catch (Exception e) {
+            Log.w(TAG, "Error resolving " + localAddress, e);   
+        }
+        
+        ArrayList<TCPTest> netalyzrTests = new ArrayList<TCPTest>();
+        // Only the local and global addresses themselves are relevant for these tests - don't store the others
+        netalyzrTests.add(new TCPTest(_localAddressTest.testName+"-LOCAL", 
+            TCPTest.CHECK_LOCAL_ADDRESS, localAddress)
+        );
+        netalyzrTests.add(new TCPTest(_localAddressTest.testName+"-GLOBAL", 
+            TCPTest.CHECK_LOCAL_ADDRESS, globalAddress)
+        );
+        // Source port numbers are not important for all following tests - set to 0
+        netalyzrTests.add(new TCPTest(_mtuTest.testName+"-SEND", TCPTest.MTU, 
+            localAddr, 0, mtuTestServer, _mtuTest.testPort, 
+            mtuProblem, Integer.toString(sendMTU))
+        );
+        netalyzrTests.add(new TCPTest(_mtuTest.testName+"-RECV", TCPTest.MTU,
+            localAddr, 0, mtuTestServer, _mtuTest.testPort,
+            mtuProblem, Integer.toString(recvMTU))
+        );
+        netalyzrTests.add(new TCPTest(_mtuTest.testName+"-bottleneck", TCPTest.MTU, 
+            localAddr, 0, mtuTestServer, _mtuTest.testPort, 
+            mtuProblem, mtuBottleneckAddress)
+        );
+
+        // Store each proxied/unproxied port in a single pair for later reporting
+        for (Integer port : proxiedPorts) {
+            netalyzrTests.add(
+                new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY, 
+                    localAddr, 0, _hiddenProxyTest.nonResponsiveIP, port, false
+                )
+            );
+        }
+        for (Integer port : unproxiedPorts) {
+            netalyzrTests.add(
+                new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY,
+                    localAddr, 0, _hiddenProxyTest.nonResponsiveIP, port, true
+                )
+            );            
+        }
+
         printResults();
+        return netalyzrTests;
     }
 
     void printResults() {
