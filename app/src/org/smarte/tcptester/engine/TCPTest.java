@@ -20,7 +20,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import android.os.Parcelable;
 import android.os.Parcel;
-
+import android.util.Log;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 public class TCPTest implements Parcelable {
     //RawSocketTester tests
@@ -194,7 +196,7 @@ public class TCPTest implements Parcelable {
             return jsonObj.toString();
         }
         catch(JSONException e) {
-            Log.d(TAG, "Error buidling JSON from TCPTest", e)
+            Log.d(TestEngine.TAG, "Error buidling JSON from TCPTest", e);
         }
         return "";
     }
