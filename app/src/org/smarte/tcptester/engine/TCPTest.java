@@ -50,7 +50,7 @@ public class TCPTest implements Parcelable {
 
     public String name;
     public byte opcode;
-    public boolean result = false;
+    public boolean result;
     public String resultExtras;
     public InetAddress src;
     public int srcPort;
@@ -62,6 +62,10 @@ public class TCPTest implements Parcelable {
     public TCPTest(String name, int opcode) {
         this.name = name;
         this.opcode = (byte) opcode;
+        // unsuccessful by default
+        this.result = false;
+        this.srcPort = 0;
+        this.dstPort = 0;
     }
     public TCPTest(String name, int opcode, String resultExtras) {
         this(name, opcode);
@@ -171,5 +175,27 @@ public class TCPTest implements Parcelable {
         }
         ret +=  "\n";
         return ret;
+    }
+
+    public String toJSONString() {
+        try {
+            // Here we convert Java Object to JSON 
+            JSONObject jsonObj = new JSONObject();
+            jsonObj.put("name", name); // Set the first name/pair 
+            jsonObj.put("opcode", opcode);
+            jsonObj.put("result", result);
+            if (src != null)
+                jsonObj.put("srcAddress", src.getHostAddress());
+            jsonObj.put("srcPort", srcPort);
+            if (dst != null)
+                jsonObj.put("dstAddress", dst.getHostAddress());
+            jsonObj.put("dstPort", dstPort);
+            jsonObj.put("extras", resultExtras);
+            return jsonObj.toString();
+        }
+        catch(JSONException e) {
+            Log.d(TAG, "Error buidling JSON from TCPTest", e)
+        }
+        return "";
     }
 }
