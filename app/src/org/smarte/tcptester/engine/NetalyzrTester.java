@@ -60,6 +60,8 @@ import org.smarte.tcptester.TcpTesterResults;
 public class NetalyzrTester implements Runnable
 {
     public static final String TAG = TcpTester.TAG;
+    // Testsuite ID to identify passed messages back to the controller
+    public static final int Testsuite_ID = 0001;
     // Address info
     public String localAddress;
     public String globalAddress;
@@ -78,24 +80,21 @@ public class NetalyzrTester implements Runnable
     private Integer _testPorts[];
 
     private Handler mHandler;
-
     public boolean done;
 
     public NetalyzrTester(Handler handler, Integer testPorts[]) {
+        this(handler);
         Log.d(TAG, "NetalyzrTester created with ports");
-        proxiedPorts = new ArrayList<Integer>();
-        unproxiedPorts = new ArrayList<Integer>();
-        _testPorts = testPorts;
-        mHandler = handler;
     }
 
     public NetalyzrTester(Handler handler) {
         Log.d(TAG, "NetalyzrTester created");
+        done = false;
+        mHandler = handler;
         proxiedPorts = new ArrayList<Integer>();
         unproxiedPorts = new ArrayList<Integer>();
+        // Default ports, but really should invoke via the other constructor
         _testPorts = new Integer[]{80, 443, 993, 8000, 5228, 6969};
-        mHandler = handler;
-        done = false;
     }
 
     @Override
@@ -126,18 +125,14 @@ public class NetalyzrTester implements Runnable
             test.init();
         }
 
-        Message msg = new Message();
         try {
             runNetalyzrTests(_tests);
         } catch (InterruptedException e) { 
             Log.d(TAG, "Test running interrupted");
-            msg.what = TestEngine.TESTSUITE_COMPLETED;
-            mHandler.sendMessage(msg);
+            sendResponseMessage(TestEngine.TESTSUITE_ERROR_OTHER);
         }
 
-        onPostExecute();
-        msg.what = TestEngine.TESTSUITE_COMPLETED;
-        mHandler.sendMessage(msg);
+        sendResponseMessage(TestEngine.TESTSUITE_COMPLETED, collectResults());
 
         synchronized (this) {
             done = true;
@@ -209,12 +204,25 @@ public class NetalyzrTester implements Runnable
         return true;
     }
 
-    ArrayList<TCPTest> onPostExecute() {
-        StringBuffer results = new StringBuffer();
-        StringBuffer url = new StringBuffer();
-        for(Test test : _tests){
-            addTestOutput(test, url, results);
-        }
+    void sendResponseMessage(int response) {
+        sendResponseMessage(response, null);
+    }
+
+    void sendResponseMessage(int response, ArrayList<TCPTest> results) {
+        Message msg = new Message();
+        msg.what = response;
+        msg.arg1 = Testsuite_ID;
+        if (results != null)
+            msg.obj = results;
+        mHandler.sendMessage(msg);
+    }
+
+    ArrayList<TCPTest> collectResults() {
+        // StringBuffer results = new StringBuffer();
+        // StringBuffer url = new StringBuffer();
+        // for(Test test : _tests){
+        //     addTestOutput(test, url, results);
+        // }
         // Log.i(TAG, results.toString());
 
         localAddress = _localAddressTest.localClientAddr;
@@ -302,27 +310,5 @@ public class NetalyzrTester implements Runnable
         for (Integer port : unproxiedPorts)
             sUnproxiedPorts += port.toString() + "; ";
         Log.d(TAG, "Unproxied = " + sUnproxiedPorts);
-    }
-
-    void addTestOutput(Test test, StringBuffer resultsURL, StringBuffer postEntity) {
-        int resultCode = test.getTestResultCode();
-        if (!test.ignoreResult) {
-            // Update user interface:
-            String idleMsg = "gatherResultsFor";
-            
-            postEntity.append(test.getTestResultString());
-            postEntity.append("\nTime" + test.testName + "=" + test.getDuration() + "\n");
-            postEntity.append("\nignoredTest" + test.testName + "=False\n");
-
-            // If TEST_NOT_EXECUTED or NOT_COMPLETED, 
-            // we assume no post results,
-            // This could be due to the test simply running overly
-            // long, or it could be a problem.
-            if (resultCode != Test.TEST_NOT_EXECUTED && resultCode != (Test.TEST_ERROR | Test.TEST_ERROR_NOT_COMPLETED)) {
-                postEntity.append("\n" + test.getPostResults() + "\n");
-            }
-        } else {
-            postEntity.append("\nignoredTest" + test.testName + "=True\n");
-        }
     }
 }

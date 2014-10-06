@@ -59,7 +59,8 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
     public static final int TEST_COMPLETED = 101;
     public static final int TESTSUITE_COMPLETED = 102;
     public static final int TESTSUITE_ERROR_PROHIBITED = 105;
-    public static final int TESTSUITE_ERROR_NETWORK = 105;
+    public static final int TESTSUITE_ERROR_NETWORK = 106;
+    public static final int TESTSUITE_ERROR_OTHER = 169;
 
 	public static final String TestServer = "192.95.61.161";
 	public static final Integer TestPorts[] = new Integer[]{80, 443, 993, 8000, 5228, 6969};
@@ -92,6 +93,12 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
                     // If the test has finished with a TEST_COMPLEX state
                     case TestEngine.TESTSUITE_COMPLETED:
                         Log.d(TAG, "Testsuite completed");
+                        // inputMessage.obj should contain the results of a testsuite completed
+                        try {
+                            mResults.addAll((ArrayList<TCPTest>)inputMessage.obj);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to retrieve results from some testsuite; ignoring.");
+                        }
                         break;
                     case TestEngine.TEST_COMPLETED:
                         Log.d(TAG, "Test in a testsuite completed");
@@ -103,7 +110,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
     }
 
     protected Integer doInBackground(Void... none) {
-        NetalyzrTester netalyzrTester = new NetalyzrTester(mHandler);
+        NetalyzrTester netalyzrTester = new NetalyzrTester(mHandler, TestPorts);
         Log.d(TAG, "Launch Netalyzr tests");
         
         new Thread(netalyzrTester).start();
@@ -114,6 +121,8 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
                 try {
                     netalyzrTester.wait();
                 } catch (InterruptedException e) {
+                    // Returning with an error - need NetalyzrTets to 
+                    // complete between running the next testsuite
                     return Test.TEST_ERROR_NOT_COMPLETED;
                 }
             }
