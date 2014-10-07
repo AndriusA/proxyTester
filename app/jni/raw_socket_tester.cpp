@@ -121,7 +121,6 @@ int main() {
 
             test_error result = test_failed;    // by default
             int result_code = 0;
-            uint32_t extras = 0;
             opcode_t currentTest = ipc->opcode;
             if ( currentTest >= ACK_ONLY && currentTest <= GET_GLOBAL_IP ) {
                 uint32_t source = 0, destination = 0;
@@ -135,8 +134,9 @@ int main() {
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
                 uint8_t reserved = 0;
-                if (n > 2+4+2+4+2)
+                if ((currentTest == RESERVED_SYN || currentTest == RESERVED_EST) && n > 2+4+2+4+2) {
                     reserved = buffer[2+4+2+4+2];
+                }
                 LOGD("Selecting test for opcode %d", currentTest);
                 switch (currentTest) {
                     case ACK_ONLY:
@@ -178,13 +178,6 @@ int main() {
                     case ACK_CHECKSUM_INCORRECT_SEQ:
                         result = runTest_ack_checksum_incorrect_seq(source, src_port, destination, dst_port);
                         break;
-                    case GET_GLOBAL_IP:
-                        extras = getOwnIp(source, src_port, destination, dst_port);
-                        LOGD("getOwnIP returned %d", extras);
-                        if (extras != 0)
-                            result = test_complete;
-                        else
-                            result = test_failed;
                     default:
                         result = test_not_implemented;
                         break;
@@ -200,8 +193,6 @@ int main() {
                 LOGD("Responding with the global address");
                 ipc->opcode = RET_GLOBAL_IP;
                 ipc->length = 1 + 1 + 4;
-                for (int i = 0; i < 4; i++)
-                    buffer[sizeof(ipcmsg) + i] = (extras >> ((3-i) * 8)) & 0xFF;
             } else
                 ipc->opcode = RESULT_FAIL;
 

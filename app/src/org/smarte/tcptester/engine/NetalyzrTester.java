@@ -42,6 +42,7 @@ import java.net.NetworkInterface;
 import java.util.Date;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Bundle;
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import edu.berkeley.icsi.netalyzr.tests.TestState;
@@ -72,6 +73,7 @@ public class NetalyzrTester implements Runnable
     // Proxied port numbers
     public List<Integer> proxiedPorts;
     public List<Integer> unproxiedPorts;
+    public String UUID;
 
     private ArrayList<Test> _tests;
     private CheckLocalAddressTest _localAddressTest;
@@ -109,6 +111,7 @@ public class NetalyzrTester implements Runnable
         // - HiddenProxyTest("checkHiddenProxies")
         Log.d(TAG, "Get Netalyzr UUID");
         TestState.getUUID();
+        UUID = TestState.id;
 
         _tests = new ArrayList();
         _localAddressTest = new CheckLocalAddressTest("checkLocalAddr");
@@ -210,10 +213,12 @@ public class NetalyzrTester implements Runnable
 
     void sendResponseMessage(int response, ArrayList<TCPTest> results) {
         Message msg = new Message();
-        msg.what = response;
-        msg.arg1 = Testsuite_ID;
+        Bundle b = new Bundle();
+        b.putInt("response", response);
+        b.putInt("testsuite", Testsuite_ID);
         if (results != null)
-            msg.obj = results;
+            b.putParcelableArrayList("results", results);
+        msg.setData(b);
         mHandler.sendMessage(msg);
     }
 
@@ -257,15 +262,15 @@ public class NetalyzrTester implements Runnable
         );
         // Source port numbers are not important for all following tests - set to 0
         netalyzrTests.add(new TCPTest(_mtuTest.testName+"-SEND", TCPTest.MTU, 
-            localAddr, 0, mtuTestServer, _mtuTest.testPort, 
+            mtuTestServer, _mtuTest.testPort, localAddr, 0,  
             mtuProblem, Integer.toString(sendMTU))
         );
         netalyzrTests.add(new TCPTest(_mtuTest.testName+"-RECV", TCPTest.MTU,
-            localAddr, 0, mtuTestServer, _mtuTest.testPort,
+            mtuTestServer, _mtuTest.testPort, localAddr, 0, 
             mtuProblem, Integer.toString(recvMTU))
         );
         netalyzrTests.add(new TCPTest(_mtuTest.testName+"-bottleneck", TCPTest.MTU, 
-            localAddr, 0, mtuTestServer, _mtuTest.testPort, 
+            mtuTestServer, _mtuTest.testPort, localAddr, 0, 
             mtuProblem, mtuBottleneckAddress)
         );
 
@@ -273,14 +278,14 @@ public class NetalyzrTester implements Runnable
         for (Integer port : proxiedPorts) {
             netalyzrTests.add(
                 new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY, 
-                    localAddr, 0, _hiddenProxyTest.nonResponsiveIP, port, false
+                    _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, false
                 )
             );
         }
         for (Integer port : unproxiedPorts) {
             netalyzrTests.add(
                 new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY,
-                    localAddr, 0, _hiddenProxyTest.nonResponsiveIP, port, true
+                    _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, true
                 )
             );            
         }

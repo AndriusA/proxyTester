@@ -20,6 +20,7 @@ import android.os.Build;
 import java.util.ArrayList;
 import android.content.pm.PackageManager.NameNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.UnknownHostException;
 import android.content.Intent;
 import android.content.Context;
@@ -46,11 +47,28 @@ import android.location.Location;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Bundle;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.telephony.TelephonyManager;
+
+import org.apache.http.NameValuePair;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.entity.StringEntity;
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
 import org.smarte.tcptester.TcpTester;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 public class TestEngine extends AsyncTask<Void, Integer, Integer>
 {
@@ -69,6 +87,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
     private ProgressBar mProgress;
     private TextView mProgressText, mSubmittedResults;
     private ArrayList<TCPTest> mResults;
+    private String mUUID;
 
     ProgressCallbackInterface mCallback;
     Handler mHandler;
@@ -78,6 +97,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         mActivity = activity;
         mProgress = progress;
         mProgressText = progressText;
+        mResults = new ArrayList<TCPTest>();
 
         mHandler = new Handler(Looper.getMainLooper()) {
             /*
@@ -89,15 +109,17 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
                 /*
                  * Chooses the action to take, based on the incoming message
                  */
-                switch (inputMessage.what) {
+                Bundle input = inputMessage.getData();
+                switch (input.getInt("response")) {
                     // If the test has finished with a TEST_COMPLEX state
                     case TestEngine.TESTSUITE_COMPLETED:
                         Log.d(TAG, "Testsuite completed");
-                        // inputMessage.obj should contain the results of a testsuite completed
                         try {
-                            mResults.addAll((ArrayList<TCPTest>)inputMessage.obj);
+                            ArrayList<TCPTest> results = input.getParcelableArrayList("results");
+                            if (input.getInt("testsuite") == RawSocketTester.Testsuite_ID)
+                                mResults.addAll(results);
                         } catch (Exception e) {
-                            Log.e(TAG, "Failed to retrieve results from some testsuite; ignoring.");
+                            Log.e(TAG, "Failed to retrieve results from testsuite " + Integer.toString(input.getInt("testsuite")) + " ignoring.", e);
                         }
                         break;
                     case TestEngine.TEST_COMPLETED:
@@ -114,21 +136,27 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         Log.d(TAG, "Launch Netalyzr tests");
         
         new Thread(netalyzrTester).start();
-        getCoarseLocation();
         Log.d(TAG, "Waiting for Netalyzr tets to finish");
+        int ret = TestEngine.TESTSUITE_COMPLETED;
         synchronized (netalyzrTester) {
             if (!netalyzrTester.done) {
                 try {
                     netalyzrTester.wait();
                 } catch (InterruptedException e) {
-                    // Returning with an error - need NetalyzrTets to 
-                    // complete between running the next testsuite
-                    return Test.TEST_ERROR_NOT_COMPLETED;
+                    /* 
+                     * Returning with an error - need NetalyzrTets to 
+                     * complete between running the next testsuite
+                     */
+                    ret = Test.TEST_ERROR_NOT_COMPLETED;
+                    return ret;
                 }
             }
         }
         
-        RawSocketTester rawSocketTester = new RawSocketTester(mActivity, mHandler, TestServer, TestPorts, netalyzrTester.localAddress);
+        mUUID = netalyzrTester.UUID;
+        RawSocketTester rawSocketTester = new RawSocketTester(mActivity, mHandler, 
+            TestServer, TestPorts, netalyzrTester.localAddress
+        );
         Log.d(TAG, "Launch RawSocketTester tests");
         new Thread(rawSocketTester).start();
 
@@ -137,12 +165,15 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
                 try {
                     rawSocketTester.wait();
                 } catch (InterruptedException e) {
-                    return Test.TEST_ERROR_NOT_COMPLETED;
+                    ret = Test.TEST_ERROR_NOT_COMPLETED;
                 }
             }
         }
-        
-        return TestEngine.TESTSUITE_COMPLETED;
+
+        Log.i(TAG, "Posting results");
+        postResults();
+
+        return ret;
     }
     
     protected void onProgressUpdate(Integer... progress) {
@@ -161,6 +192,11 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         } else {
             intent.putExtra("status", "failed");
         }
+
+        for (TCPTest tres : mResults) {
+            Log.d(TAG, tres.toJSON().toString());
+        }
+
         intent.putParcelableArrayListExtra("results", mResults);
         mActivity.startActivity(intent);
     }
@@ -170,7 +206,58 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         void onProgressUpdate(Integer... progress);
     }
 
-    private void getCoarseLocation() {
+
+    String collectResults() {
+        JSONObject location = getCoarseLocation();
+        JSONObject networkInfo = getNetworkInfo();
+
+        JSONObject result = new JSONObject();
+        try {
+            result.put("UUID", mUUID);
+            result.put("location", location);
+            result.put("networkInfo", networkInfo);
+            JSONArray testResults = new JSONArray();
+            for (TCPTest tres : mResults) {
+                testResults.put(tres);
+            }
+            result.put("results", testResults);
+            Log.d(TAG, result.toString());
+        } catch (JSONException e) {
+            Log.d(TestEngine.TAG, "Error buidling JSON for network info", e);
+        }
+        return result.toString();
+    }
+
+    boolean postResults() {
+        DefaultHttpClient httpclient = new DefaultHttpClient();
+        HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
+        // HttpPost httpost = new HttpPost("");
+        httpost.setHeader("Accept", "application/json");
+        httpost.setHeader("Content-type", "application/json");
+
+        try {
+            StringEntity postResults = new StringEntity(collectResults());
+            httpost.setEntity(postResults);
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "result encoding error", e);
+            return false;
+        }
+
+        try {
+            //Handles what is returned from the page 
+            ResponseHandler responseHandler = new BasicResponseHandler();
+            httpclient.execute(httpost, responseHandler);
+            return true;
+        } catch (IOException e) {
+            Log.e(TAG, "Error Post'ing", e);
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Another error post'ing", e);
+            return false;
+        }
+    }
+
+    private JSONObject getCoarseLocation() {
         LocationManager locationManager = (LocationManager) mActivity.getSystemService(mActivity.LOCATION_SERVICE);
         String locationProvider = LocationManager.NETWORK_PROVIDER;
         // Or use LocationManager.GPS_PROVIDER
@@ -183,7 +270,47 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
             lat = -1.0;
             lon = -1.0;
         }
-        Log.d(TAG, "Last known location: " + Double.toString(lat) + ":" + Double.toString(lon));
-        return;
+        JSONObject result = new JSONObject();
+        try {
+            // Here we convert Java Object to JSON 
+            result.put("name", "location"); // Set the first name/pair 
+            result.put("latitude", lat);
+            result.put("longitude", lon);
+        }
+        catch(JSONException e) {
+            Log.d(TestEngine.TAG, "Error buidling JSON for location", e);
+        }
+        // Log.d(TAG, "Location: " + result.toString());
+        return result;
+    }
+
+    private JSONObject getNetworkInfo() {
+        ConnectivityManager connMgr = 
+            (ConnectivityManager) mActivity.getSystemService(mActivity.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+
+        JSONObject result = new JSONObject();
+        try {
+            result.put("networkInfo", networkInfo.toString());
+            result.put("extra", networkInfo.getExtraInfo());
+            result.put("type", networkInfo.getTypeName());
+            result.put("subtype", networkInfo.getSubtypeName());
+            result.put("roaming", networkInfo.isRoaming());
+
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                WifiManager wifiManager = (WifiManager) mActivity.getSystemService(mActivity.WIFI_SERVICE);
+                WifiInfo info = wifiManager.getConnectionInfo();
+                result.put("wifi", info.toString());
+                result.put("SSID", info.getSSID());
+            } else {
+                TelephonyManager telephonyManager = (TelephonyManager) mActivity.getSystemService(mActivity.TELEPHONY_SERVICE);
+                result.put("cellular", telephonyManager.getNetworkOperator());
+            }
+        } catch (JSONException e) {
+            Log.d(TestEngine.TAG, "Error buidling JSON for network info", e);
+        }
+        // Log.d(TAG, "Network info: " + result.toString());
+        return result;
+        
     }
 }

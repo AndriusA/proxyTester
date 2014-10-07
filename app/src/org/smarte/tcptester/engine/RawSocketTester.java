@@ -42,7 +42,7 @@ import java.net.NetworkInterface;
 import java.util.Date;
 import android.os.Handler;
 import android.os.Message;
-
+import android.os.Bundle;
 
 import com.stericson.RootTools.RootTools;
 import com.stericson.RootTools.execution.Shell;
@@ -59,6 +59,7 @@ import org.smarte.tcptester.engine.TestEngine;
 public class RawSocketTester implements Runnable
 {
     public static final String TAG = "TCPTester";
+    public static final int Testsuite_ID = 0002;
     private static final String TESTER_BINARY = "tcptester";
     private static final String IPTABLES_CMD = 
         "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP";
@@ -66,11 +67,9 @@ public class RawSocketTester implements Runnable
     private SocketTesterServer mTesterServer;
     private Context mActivity;
     
-    private InetAddress mServerAddress;
+    private InetAddress mServerAddress, mLocalAddress;
     private Integer[] mServerPorts; 
     private ArrayList<TCPTest> mResults;
-    private ProgressBar mProgress;
-    private TextView mProgressText, mSubmittedResults;
 
     private Handler mHandler;
     public boolean done;
@@ -83,15 +82,20 @@ public class RawSocketTester implements Runnable
         mResults = new ArrayList<TCPTest>();
         mHandler = handler;
         done = false;
-        init(testServer, testPorts);
+        init(testServer, testPorts, localAddress);
     }
 
-    public void init(String testServer, Integer testPorts[]) {
+    private void init(String testServer, Integer testPorts[], String localAddress) {
         // Only take the first one
         try {
             mServerAddress = InetAddress.getAllByName(testServer)[0];
         } catch (UnknownHostException e) {
             mServerAddress = null;
+        }
+        try {
+            mLocalAddress = InetAddress.getAllByName(localAddress)[0];
+        } catch (Exception e) {
+            mLocalAddress = null;
         }
         mServerPorts = testPorts;
     }    
@@ -103,7 +107,7 @@ public class RawSocketTester implements Runnable
                 Log.d(TAG, "Native binary installed");
             } else {
                 Log.d(TAG, "Installing binary failed");
-                onPostExecute(TestEngine.TESTSUITE_ERROR_PROHIBITED);
+                sendResponseMessage(TestEngine.TESTSUITE_ERROR_PROHIBITED);
                 return;
             }
         } else {
@@ -111,19 +115,19 @@ public class RawSocketTester implements Runnable
         }
 
         if (!RootTools.isRootAvailable() || !RootTools.isAccessGiven()) {
-            onPostExecute(TestEngine.TESTSUITE_ERROR_PROHIBITED);
+            sendResponseMessage(TestEngine.TESTSUITE_ERROR_PROHIBITED);
             return;
         }
         
-        if (mServerAddress == null) {
-            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+        if (mServerAddress == null || mLocalAddress == null) {
+            sendResponseMessage(TestEngine.TESTSUITE_ERROR_NETWORK);
             return;
         }
         ConnectivityManager connMgr = (ConnectivityManager) mActivity.getSystemService(mActivity.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if ( networkInfo == null || !networkInfo.isConnected() ) {
             Log.d(TAG, "Fatal: Device is currently offline");
-            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+            sendResponseMessage(TestEngine.TESTSUITE_ERROR_NETWORK);
             return;
         }
             
@@ -135,16 +139,15 @@ public class RawSocketTester implements Runnable
         RootTools.runBinary(mActivity, TESTER_BINARY, address+" &");
         
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
-        // mProgress.setMax(tests.size());
+    
         int testNo = 0;
         boolean iptablesFailed = false;
         for (TCPTest test : tests) {
-            if (iptablesFailed) break;
+            // Exit immediately if iptables command has not been successful
+            if (iptablesFailed)
+                break;
             testNo++;
-            Message msg = new Message();
-            msg.what = TestEngine.TEST_COMPLETED;
-            mHandler.sendMessage(msg);
-            // publishProgress(1, testNo, tests.size());
+            sendResponseMessage(TestEngine.TEST_COMPLETED);
             Log.d(TAG, "Running test " + test.name);
 
             boolean iptablesAdded = false;
@@ -159,7 +162,7 @@ public class RawSocketTester implements Runnable
             try {
                 // Try runnig the test regardless
                 boolean res = mTesterServer.runTest(test.opcode, test.src, test.srcPort, 
-                    test.dst, test.dstPort, (test.extras != null ? test.extras[0] : 0));
+                    test.dst, test.dstPort, test.inputExtras);
                 mResults.add(new TCPTest(test, res));
             } catch (Exception e) {
                 Log.d(TAG, "Exception caught when running test: ", e);
@@ -189,64 +192,69 @@ public class RawSocketTester implements Runnable
         }
         
         Log.i(TAG, Integer.toString(mResults.size()) + " results");
-        Log.i(TAG, "Test complete");
         if (iptablesFailed) {
             Log.i(TAG, "Tests aborted due to iptables failure");
-            onPostExecute(TestEngine.TESTSUITE_ERROR_NETWORK);
+            sendResponseMessage(TestEngine.TESTSUITE_ERROR_NETWORK);
             return;
         }
-        onPostExecute(TestEngine.TESTSUITE_COMPLETED);
-        return;
-    }
 
-    private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Integer[] serverPorts) {
-        ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
-        // basicTests.add(new TCPTest("ACK-only", 2));
-        // basicTests.add(new TCPTest("URG-only", 3));
-        // // basicTests.add(new TCPTest("ACK-URG", 4));
-        // basicTests.add(new TCPTest("plain-URG", 5));
-        // basicTests.add(new TCPTest("ACK-checksum-incorrect", 6));
-        // basicTests.add(new TCPTest("ACK-checksum", 7));
-        // basicTests.add(new TCPTest("ACK-data", 15));
-        // // basicTests.add(new TCPTest("URG-URG", 8));
-        // basicTests.add(new TCPTest("URG-checksum", 9));
-        // basicTests.add(new TCPTest("URG-checksum-incorrect", 10));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 1));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 2));
-        // basicTests.add(new TCPTest("Reserved-syn", 11, 4));
-        // // basicTests.add(new TCPTest("Reserved-syn", 11, 8));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 1));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 2));
-        // basicTests.add(new TCPTest("Reserved-est", 12, 4));
-        // // basicTests.add(new TCPTest("Reserved-est", 12, 8));
-        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", 13));
-
-        ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
-        Random rng = new Random(System.currentTimeMillis());
-        // List<InetAddress> localAddresses = getOwnInetAddresses();
-        // completeTests.add(new TCPTest("GlobalIP", TCPTest.TEST_GET_GLOBAL_IP, serverAddress, 6969, localAddresses.get(0), 1024 + 1 + rng.nextInt(65536-1024-1)));
-
-        // for (InetAddress localAddress : localAddresses) {
-        //     for (TCPTest test : basicTests) {
-        //         for (int dstPort : serverPorts) {
-        //             // Unprivileged random port number in [1025...65536)
-        //             int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
-        //             completeTests.add(new TCPTest(test, serverAddress, dstPort, localAddress, srcPort));
-        //         }
-        //     }
-        // }
-        Log.d(TAG, Integer.toString(completeTests.size()) + " tests selected");
-        return completeTests;
-    }
-
-    private void onPostExecute(int returnCode) {
-        Message returnMessage = new Message();
-        returnMessage.what = returnCode;
-        mHandler.sendMessage(returnMessage);
+        sendResponseMessage(TestEngine.TESTSUITE_COMPLETED, mResults);
+        Log.d(TAG, "Notifying anyone listening for testsuite completion");
         synchronized(this) {
             done = true;
             notifyAll();
         }
+    }
+
+    private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Integer[] serverPorts) {
+        ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
+        basicTests.add(new TCPTest("ACK-only", TCPTest.ACK_ONLY));
+        basicTests.add(new TCPTest("URG-only", TCPTest.URG_ONLY));
+        // basicTests.add(new TCPTest("ACK-URG", TCPTest.ACK_URG));
+        basicTests.add(new TCPTest("plain-URG", TCPTest.PLAIN_URG));
+        basicTests.add(new TCPTest("ACK-checksum-incorrect", TCPTest.ACK_CHECKSUM_INCORRECT));
+        basicTests.add(new TCPTest("ACK-checksum", TCPTest.ACK_CHECKSUM));
+        basicTests.add(new TCPTest("ACK-data", TCPTest.ACK_DATA));
+        // basicTests.add(new TCPTest("URG-URG", TCPTest.URG_URG));
+        basicTests.add(new TCPTest("URG-checksum", TCPTest.URG_CHECKSUM));
+        basicTests.add(new TCPTest("URG-checksum-incorrect", TCPTest.URG_CHECKSUM_INCORRECT));
+        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 1));
+        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 2));
+        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 4));
+        // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 8));
+        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_EST, 1));
+        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 2));
+        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 4));
+        // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 8));
+        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", TCPTest.ACK_CHECKSUM_INCORRECT_SEQ));
+
+        ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
+        Random rng = new Random(System.currentTimeMillis());
+        for (TCPTest test : basicTests) {
+            for (int dstPort : serverPorts) {
+                // Unprivileged random port number in [1025...65536)
+                int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
+                completeTests.add(new TCPTest(test, serverAddress, dstPort, mLocalAddress, srcPort));
+            }
+        }
+        
+        Log.d(TAG, Integer.toString(completeTests.size()) + " tests selected");
+        return completeTests;
+    }
+
+    void sendResponseMessage(int response) {
+        sendResponseMessage(response, null);
+    }
+
+    void sendResponseMessage(int response, ArrayList<TCPTest> results) {
+        Message msg = new Message();
+        Bundle b = new Bundle();
+        b.putInt("response", response);
+        b.putInt("testsuite", Testsuite_ID);
+        if (results != null)
+            b.putParcelableArrayList("results", results);
+        msg.setData(b);
+        mHandler.sendMessage(msg);
     }
 
     private boolean installNativeBinary(Context context) {

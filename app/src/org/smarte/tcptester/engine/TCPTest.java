@@ -58,8 +58,7 @@ public class TCPTest implements Parcelable {
     public int srcPort;
     public InetAddress dst;
     public int dstPort;
-
-
+    public byte inputExtras;
 
     public TCPTest(String name, int opcode) {
         this.name = name;
@@ -68,10 +67,15 @@ public class TCPTest implements Parcelable {
         this.result = false;
         this.srcPort = 0;
         this.dstPort = 0;
+        this.inputExtras = 0;
     }
     public TCPTest(String name, int opcode, String resultExtras) {
         this(name, opcode);
         this.resultExtras = resultExtras;
+    }
+    public TCPTest(String name, int opcode, int inputExtras) {
+        this(name, opcode);
+        this.inputExtras = (byte)inputExtras;
     }
     public TCPTest(String name, int opcode, InetAddress dst, int dstPort, InetAddress src, int srcPort) {
         this(name, opcode);
@@ -171,7 +175,7 @@ public class TCPTest implements Parcelable {
             + " " + src.getHostAddress() + ":" + Integer.toString(srcPort) 
             + " to " + dst.getHostAddress() + ":" + Integer.toString(dstPort) 
             + (result == true ? " passed" : " failed");
-        if (resultExtras.length() > 0) {
+        if (resultExtras != null && resultExtras.length() > 0) {
             ret += " ";
             ret += resultExtras;
         }
@@ -179,10 +183,10 @@ public class TCPTest implements Parcelable {
         return ret;
     }
 
-    public String toJSONString() {
+    public JSONObject toJSON() {
+        JSONObject jsonObj = new JSONObject();
         try {
             // Here we convert Java Object to JSON 
-            JSONObject jsonObj = new JSONObject();
             jsonObj.put("name", name); // Set the first name/pair 
             jsonObj.put("opcode", opcode);
             jsonObj.put("result", result);
@@ -193,11 +197,10 @@ public class TCPTest implements Parcelable {
                 jsonObj.put("dstAddress", dst.getHostAddress());
             jsonObj.put("dstPort", dstPort);
             jsonObj.put("extras", resultExtras);
-            return jsonObj.toString();
         }
         catch(JSONException e) {
             Log.d(TestEngine.TAG, "Error buidling JSON from TCPTest", e);
         }
-        return "";
+        return jsonObj;
     }
 }

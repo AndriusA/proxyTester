@@ -153,16 +153,7 @@ public class SocketTesterServer extends Thread {
         if (response[1] == 0) { 
             Log.d(TAG, "Test successful");
             return true;
-        } else if (response[1] == 22) { // RET_GLOBAL_IP
-            if (response[0] != 6) {
-                Log.e(TAG, "Wrong response length = " + Integer.toString(response[0]));
-                return false;
-            } 
-            responseExtra = new byte[4];
-            System.arraycopy(response, 2, responseExtra, 0, 4);
-            return true;
-        }
-        else {
+        } else {
             Log.d(TAG, "Test failed");
             return false;
         }

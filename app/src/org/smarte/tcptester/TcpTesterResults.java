@@ -80,11 +80,8 @@ public class TcpTesterResults extends ActionBarActivity
         if (results != null) {
             Log.i(TAG, "Aggregating results for viewing");
             populateDetailedResults(results);
-
-            Log.i(TAG, "Posting results");
-            new PostResultsTask().execute(status, getPostResults(results));
         } else {
-            Log.e(TAG, "No results to show or send");
+            Log.e(TAG, "No results to show");
         }
     }
 
@@ -134,18 +131,6 @@ public class TcpTesterResults extends ActionBarActivity
         // Attach the adapter to a ListView
         ListView listView = (ListView) findViewById(R.id.testDetailed);
         listView.setAdapter(adapter);
-    }
-
-    private String getPostResults(ArrayList<TCPTest> results) {
-        String ret = "";
-        ConnectivityManager connMgr = 
-            (ConnectivityManager) getApplicationContext().getSystemService(CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        ret += "Network info: " + networkInfo.toString();
-        for (TCPTest result : results) {
-            ret += result.toString();
-        }
-        return ret;
     }
 
     public class TCPTestAggregate {
@@ -205,43 +190,4 @@ public class TcpTesterResults extends ActionBarActivity
             return convertView;
         }
     }
-
-    
-    private class PostResultsTask extends AsyncTask<String, Void, Boolean> {
-        @Override protected Boolean doInBackground(String... results) {
-            return postDataHttp(results[0], results[1]);
-        }
-    
-        protected Boolean postDataHttp(String status, String results) {
-            DefaultHttpClient httpclient = new DefaultHttpClient();
-            HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
-            List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
-            nameValuePairs.add(new BasicNameValuePair("id", "12345"));
-            nameValuePairs.add(new BasicNameValuePair("status", status));
-            // nameValuePairs.add(new BasicNameValuePair("duration", Long.toString()));
-            nameValuePairs.add(new BasicNameValuePair("result", results));
-
-            try {
-                httpost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-                //Handles what is returned from the page 
-                ResponseHandler responseHandler = new BasicResponseHandler();
-                httpclient.execute(httpost, responseHandler);
-                return true;
-            } catch (UnsupportedEncodingException e) {
-                Log.e(TAG, "Error Post'ing", e);
-                return false;
-            }  catch (IOException e) {
-                Log.e(TAG, "Error Post'ing", e);
-                return false;
-            }
-        }
-
-        protected void onPostExecute(Boolean result) {
-            if (result == true)
-                mSent.setText(getString(R.string.results_posted));
-            else
-                mSent.setText(getString(R.string.results_post_failed));
-        }
-
-    }    
 }
