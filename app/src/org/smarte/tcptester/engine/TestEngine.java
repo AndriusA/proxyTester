@@ -86,7 +86,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
     private Context mActivity;
     private ProgressBar mProgress;
     private TextView mProgressText, mSubmittedResults;
-    private ArrayList<TCPTest> mResults;
+    private ArrayList<TCPTest> mResults, netResults;
     private String mUUID;
 
     ProgressCallbackInterface mCallback;
@@ -98,6 +98,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
         mProgress = progress;
         mProgressText = progressText;
         mResults = new ArrayList<TCPTest>();
+        netResults = new ArrayList<TCPTest>();
 
         mHandler = new Handler(Looper.getMainLooper()) {
             /*
@@ -116,8 +117,12 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
                         Log.d(TAG, "Testsuite completed");
                         try {
                             ArrayList<TCPTest> results = input.getParcelableArrayList("results");
-                            if (input.getInt("testsuite") == RawSocketTester.Testsuite_ID)
+                            if (input.getInt("testsuite") == RawSocketTester.Testsuite_ID) {
                                 mResults.addAll(results);
+                            }
+                            else {
+                                netResults.addAll(results);
+                            }
                         } catch (Exception e) {
                             Log.e(TAG, "Failed to retrieve results from testsuite " + Integer.toString(input.getInt("testsuite")) + " ignoring.", e);
                         }
@@ -218,7 +223,10 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
             result.put("networkInfo", networkInfo);
             JSONArray testResults = new JSONArray();
             for (TCPTest tres : mResults) {
-                testResults.put(tres);
+                testResults.put(tres.toJSON());
+            }
+            for (TCPTest tres : netResults) {
+                testResults.put(tres.toJSON());   
             }
             result.put("results", testResults);
             Log.d(TAG, result.toString());
@@ -230,7 +238,7 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
 
     boolean postResults() {
         DefaultHttpClient httpclient = new DefaultHttpClient();
-        HttpPost httpost = new HttpPost("http://tcptester.smart-e.org/result");
+        HttpPost httpost = new HttpPost("http://192.95.61.160:3000/data/");
         // HttpPost httpost = new HttpPost("");
         httpost.setHeader("Accept", "application/json");
         httpost.setHeader("Content-type", "application/json");
