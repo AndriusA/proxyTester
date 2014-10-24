@@ -26,60 +26,73 @@ var putData = function (req, res) {
         db.run("INSERT INTO testset (uuid, result) VALUES (?, ?)", parsed.uuid, data);
     	res.json(parsed);
 
-        var geocoderProvider = 'google';
-        var httpAdapter = 'https';
-        var extra = {
-            apiKey: 'AIzaSyAc95by91bSjfLG8dmU3AafsNZ6skDugMs',
-        };
-        var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
-        console.log("location", parsed.location);
-        geocoder.reverse(parsed.location.latitude, parsed.location.longitude, function(err, res) {
-            // console.log(err, res);
-            var city;
-            var country;
-            // console.log(res);
-            if (res !== undefined) {
-                // take the first result
-                city = res[0].city;
-                country = res[0].country;
-            } else {
-                city = "UNKNOWN";
-                country = "UNKNOWN";
-            }
-
-            // geocoder.geocode(country, function(err, res) {
-            // })
-
+        reverseLocation(parsed, function(country, city) {
             var insertQuery = db.prepare("INSERT INTO anonymised (uuid, country, city, networkType, networkName) VALUES (?,?,?,?,?)");
+            // WiFi network names/SSID may be privacy-sensitive; use whois-based network name
             if (parsed.networkInfo.type == "WIFI") {
-                console.log("data", parsed.results);
-                var result = _.find(parsed.results, { 'name': "CheckLocalAddressTest-GLOBAL" });
-                whois.lookup(result.srcAddress, function(err, whoisData) {
-                    if (!err) {
-                        var regexp = /netname:\s*([A-Za-z0-9_-]*)/i;
-                        var match = whoisData.match(regexp);
-                        var networkName = "";
-                        if (match.length >= 1)
-                            networkName = match[1];
-                        insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName);
-                    } else {
-                        console.log("Error performing a whois lookup:", err);
-                    }
+                whoisNetworkName(parsed, function(networkName) {
+                    insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName);    
                 });
-
             } else {
                 insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, parsed.networkInfo.extra);    
             }
         });
+
     });
 };
+
+function reverseLocation(data, callback) {
+    var geocoderProvider = 'google';
+    var httpAdapter = 'https';
+    var extra = {
+        apiKey: 'AIzaSyAc95by91bSjfLG8dmU3AafsNZ6skDugMs',
+    };
+    var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
+    // console.log("location", data.location);
+    geocoder.reverse(data.location.latitude, data.location.longitude, function(err, res) {
+        // console.log(err, res);
+        var city;
+        var country;
+        // console.log(res);
+        if (res !== undefined) {
+            // take the first result
+            city = res[0].city;
+            country = res[0].country;
+        } else {
+            city = "UNKNOWN";
+            country = "UNKNOWN";
+        }
+
+        callback(country, city);
+    });
+}
+
+function whoisNetworkName(data, callback) {
+    // Find the global IP
+    var result = _.find(data.results, { 'name': "CheckLocalAddressTest-GLOBAL" });
+    var networkName = "UNKNOWN";
+    if (result) {
+        whois.lookup(result.srcAddress, function(err, whoisData) {
+            if (!err) {
+                var regexp = /netname:\s*([A-Za-z0-9_-]*)/i;
+                var match = whoisData.match(regexp);
+                if (match && match.length >= 1)
+                    networkName = match[1];
+                callback(networkName);
+            } else {
+                console.log("Error performing a whois lookup:", err);
+            }
+        });
+    }
+    callback(networkName);
+}
 
 var getAnonymisedData = function(req, res) {
     db.all("SELECT country, city, networkType, networkName FROM anonymised", function(err, data) {
         if (err)
             return res.json({});
         
-        console.log("SQL data:", data);
+        // console.log("SQL data:", data);
         // country
         // country code (3 letter)
         // number of tests
@@ -115,7 +128,7 @@ var getAnonymisedData = function(req, res) {
         // Collect the cities per country
         var countryCities = _.chain(data)
             .groupBy('country')
-            .mapValues( function(val){ return {cities: _.pluck(val, 'city')} })
+            .mapValues( function(val){ return {cities: _.uniq(_.pluck(val, 'city'))} })
             .value();
 
         // Aggregate network data:
@@ -141,11 +154,12 @@ var getAnonymisedData = function(req, res) {
             aggr = mobile[item.country][item.networkType][item.networkName];
             aggr.numberOfTests++;
             aggr.testedCities.push(item.city);
+            aggr.testedCities = _.uniq(aggr.testedCities);
             aggr.summaries.push(item.summary);
             aggr.summaries = _.uniq(aggr.summaries);
             aggr.summary = aggr.summaries.join("; ");
         }
-        console.log("MOBILE", prettyjson.render(mobile));
+        // console.log("MOBILE", prettyjson.render(mobile));
 
         var output = {};
         output = _.chain(output)
@@ -154,7 +168,7 @@ var getAnonymisedData = function(req, res) {
             .merge(mobile)
             .value()
 
-        console.log("merged", prettyjson.render(output));
+        // console.log("merged", prettyjson.render(output));
 
         // Assign country codes
         output = _.mapValues(output, function(val) {

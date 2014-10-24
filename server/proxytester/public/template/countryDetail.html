@@ -3,10 +3,10 @@
 </button>
 {{#if country}}
     <h2>{{country}} - {{numberOfTests}} tests</h2>
-    {{#if MOBILE}}
+    {{#if mobile}}
     <h3>Cellular Operators:</h3>
     <ul class="list-unstyled">
-        {{#each MOBILE}}
+        {{#each mobile}}
             <li>
                 {{#if numberOfTests}}
                     <span class="glyphicon glyphicon-ok"></span>
