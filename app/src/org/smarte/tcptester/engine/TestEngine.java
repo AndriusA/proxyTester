@@ -16,59 +16,42 @@
 
 package org.smarte.tcptester.engine;
 
-import android.os.Build;
-import java.util.ArrayList;
-import android.content.pm.PackageManager.NameNotFoundException;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.UnknownHostException;
-import android.content.Intent;
-import android.content.Context;
-import java.util.concurrent.TimeoutException;
 import android.app.Activity;
-import android.widget.ProgressBar;
-import android.os.AsyncTask;
-import android.widget.TextView;
-import android.net.NetworkInfo;
-import java.util.List;
-import android.content.pm.PackageManager;
-import java.util.Random;
-import android.content.pm.PackageInfo;
-import java.net.SocketException;
-import java.util.Enumeration;
-import android.util.Log;
-import android.net.ConnectivityManager;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Date;
-import java.util.concurrent.ExecutionException;
-import android.location.LocationManager;
+import android.content.Context;
+import android.content.Intent;
 import android.location.Location;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Bundle;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.telephony.TelephonyManager;
-
-import org.apache.http.NameValuePair;
+import android.util.Log;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.client.ResponseHandler;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import edu.berkeley.icsi.netalyzr.tests.Test;
 import org.smarte.tcptester.R;
-import org.smarte.tcptester.TcpTesterResults;
 import org.smarte.tcptester.TcpTester;
+import org.smarte.tcptester.TcpTesterResults;
 
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
+
 
 public class TestEngine extends AsyncTask<Void, Integer, Integer>
 {

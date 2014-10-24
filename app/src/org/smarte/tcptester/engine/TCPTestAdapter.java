@@ -16,15 +16,14 @@
 
 package org.smarte.tcptester.engine;
 
-import android.widget.ArrayAdapter;
-import android.view.View;
 import android.content.Context;
-import java.util.ArrayList;
-import android.view.ViewGroup;
 import android.view.LayoutInflater;
-import android.widget.TextView;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-
+import android.widget.TextView;
+import java.util.ArrayList;
 import org.smarte.tcptester.R;
 
 public class TCPTestAdapter extends ArrayAdapter<TCPTest> {

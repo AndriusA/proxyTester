@@ -16,44 +16,25 @@
 
 package org.smarte.tcptester.engine;
 
-import android.os.Build;
-import java.util.ArrayList;
-import android.content.pm.PackageManager.NameNotFoundException;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import android.content.Intent;
-import android.content.Context;
-import java.util.concurrent.TimeoutException;
-import android.app.Activity;
-import android.widget.ProgressBar;
-import android.os.AsyncTask;
-import android.widget.TextView;
-import android.net.NetworkInfo;
-import java.util.List;
-import android.content.pm.PackageManager;
-import java.util.Random;
-import android.content.pm.PackageInfo;
-import java.net.SocketException;
-import java.util.Enumeration;
-import android.util.Log;
-import android.net.ConnectivityManager;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Date;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Bundle;
+import android.util.Log;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 
-import edu.berkeley.icsi.netalyzr.tests.Test;
-import edu.berkeley.icsi.netalyzr.tests.TestState;
-import edu.berkeley.icsi.netalyzr.tests.nat.CheckLocalAddressTest;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.CheckUDPTest;
+import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6Test;
 import edu.berkeley.icsi.netalyzr.tests.connectivity.MTUTest;
-import edu.berkeley.icsi.netalyzr.tests.connectivity.IPv6MTUTest;
-import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
 import edu.berkeley.icsi.netalyzr.tests.dns.DNSIPv6SupportTest;
-
+import edu.berkeley.icsi.netalyzr.tests.nat.CheckLocalAddressTest;
+import edu.berkeley.icsi.netalyzr.tests.proxy.HiddenProxyTest;
+import edu.berkeley.icsi.netalyzr.tests.Test;
+import edu.berkeley.icsi.netalyzr.tests.TestState;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTester;
 import org.smarte.tcptester.TcpTesterResults;

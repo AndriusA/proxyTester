@@ -16,38 +16,24 @@
 
 package org.smarte.tcptester;
 
-import java.util.ArrayList;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.HttpPost;
-import android.view.Menu;
-import java.io.IOException;
-import android.widget.ImageView;
 import android.content.Context;
-import android.widget.ListView;
-import java.util.HashMap;
-import org.apache.http.impl.client.DefaultHttpClient;
-import android.widget.ArrayAdapter;
-import android.os.AsyncTask;
-import android.widget.TextView;
-import android.net.NetworkInfo;
-import java.util.List;
-import android.view.View;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.message.BasicNameValuePair;
-import java.io.UnsupportedEncodingException;
-import android.view.ViewGroup;
-import org.apache.http.impl.client.BasicResponseHandler;
+import android.os.Bundle;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.net.ConnectivityManager;
-import android.os.Bundle;
 import android.view.LayoutInflater;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
+import android.view.Menu;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
-import android.support.v7.app.ActionBar;
-
-import org.smarte.tcptester.R;
 import org.smarte.tcptester.engine.TCPTest;
+import org.smarte.tcptester.R;
 
 public class TcpTesterResults extends ActionBarActivity 
 {

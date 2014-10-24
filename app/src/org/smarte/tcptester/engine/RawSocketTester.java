@@ -16,45 +16,33 @@
 
 package org.smarte.tcptester.engine;
 
-import android.os.Build;
-import java.util.ArrayList;
-import android.content.pm.PackageManager.NameNotFoundException;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import android.content.Intent;
 import android.content.Context;
-import java.util.concurrent.TimeoutException;
-import android.app.Activity;
-import android.widget.ProgressBar;
-import android.os.AsyncTask;
-import android.widget.TextView;
-import android.net.NetworkInfo;
-import java.util.List;
-import android.content.pm.PackageManager;
-import java.util.Random;
 import android.content.pm.PackageInfo;
-import java.net.SocketException;
-import java.util.Enumeration;
-import android.util.Log;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Date;
+import android.net.NetworkInfo;
+import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Bundle;
-
-import com.stericson.RootTools.RootTools;
-import com.stericson.RootTools.execution.Shell;
+import android.util.Log;
+import com.stericson.RootTools.exceptions.RootDeniedException;
 import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
-import com.stericson.RootTools.exceptions.RootDeniedException;
-
-
+import com.stericson.RootTools.execution.Shell;
+import com.stericson.RootTools.RootTools;
 import edu.berkeley.icsi.netalyzr.tests.Test;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.concurrent.TimeoutException;
+import java.util.Random;
+
+import org.smarte.tcptester.engine.TestEngine;
 import org.smarte.tcptester.R;
 import org.smarte.tcptester.TcpTesterResults;
-import org.smarte.tcptester.engine.TestEngine;
 
 public class RawSocketTester implements Runnable
 {
