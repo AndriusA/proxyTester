@@ -1,0 +1,4 @@
+.npmignore
+build/
+db/test.db
+node_modules/

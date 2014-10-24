@@ -1,0 +1,43 @@
+<button type="button" class="close">
+    <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+</button>
+{{#if country}}
+    <h2>{{country}} - {{numberOfTests}} tests</h2>
+    {{#if MOBILE}}
+    <h3>Cellular Operators:</h3>
+    <ul class="list-unstyled">
+        {{#each MOBILE}}
+            <li>
+                {{#if numberOfTests}}
+                    <span class="glyphicon glyphicon-ok"></span>
+                    {{@key}} ({{numberOfTests}} tests) - {{summary}}
+                {{else}}
+                    <span class="glyphicon glyphicon-remove"></span>
+                    {{@key}}
+                {{/if}}            
+            </li>
+        {{/each}}
+    </ul>
+    {{/if}}
+
+    {{#if WIFI}}
+        <h3>WiFi networks:</h3>
+        
+        <ul class="list-unstyled">
+            {{#each WIFI}}
+                <li>
+                {{@key}} ({{numberOfTests}} tests) - {{summary}}
+                </li>
+            {{/each}}
+        </ul>
+    {{/if}}
+
+    <h3>Results collected at:</h3>
+    <ul class="list-unstyled">
+        {{#cities}}
+        <li>{{.}}</li>
+        {{/cities}}
+    </ul>
+{{else}}
+    No data collected
+{{/if}}

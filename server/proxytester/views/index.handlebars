@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/bootstrap-theme.min.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.12/d3.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.1.0/topojson.min.js"></script> -->
+    <script src="js/d3.min.js"></script>
+    <script src="js/topojson.min.js"></script>
+    <script src="js/datamaps.world.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0/handlebars.min.js"></script>
+    <script src="js/resultMap.js"></script>
+
+
+</head>
+<body>
+
+    <div class="container-fluid">
+        <h1 id="title">{{title}} 
+            <a href="https://play.google.com/store/apps/details?id=org.smarte.tcptester">
+                <img alt="Get it on Google Play" src="/img/en_generic_rgb_wo_45.png" />
+            </a>
+        </h1>
+            
+        <div class="row">
+            <div id="map" class="row col-md-12"></div>
+        </div>
+
+        <div class="countryDetail hidden" id="countryDetail" style="">
+            
+        </div>
+
+        <section>
+            <h2>About ProxyTester</h2>
+            <p>ProxyTester was created to investigate the current state of proxies and other middleboxes in today's Internet.</p>
+
+            </p>In addition to this online interface showing aggregated and anoymised data, it provides a network analysis tool which:
+            </p>
+            <ul>
+            <li>Detects proxies on a number of popular communication ports: HTTP, HTTPS, DNS, IMAPS, FTP, etc.</li>
+            <li>Determines the user's local and global IP addresses, as well whether a particular network provides global addresses to individual users</li>
+            <li>Detects whether port numbers typically used for secure communication (SSL, HTTPS, IMAPS) are interfered with</li>
+            <li>Runs a series of diagnostic tests on popular port numbers for the TCP protocol, checking for further traces of packet rewriting and modifications</li>
+            </ul>
+        </section>
+
+        <p>For any queries or suggestions please contact <a href="http://smart-e.org">Andrius Aucinas</a></p>
+    </div>
+</body>
+<footer>
+    <hr>
+    {{>footer}}
+</footer>
+</html>

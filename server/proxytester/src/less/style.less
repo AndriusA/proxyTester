@@ -1,0 +1,58 @@
+@size: 14px;
+@color: #00B7FF;
+
+body {
+  padding: 10px 50px;
+  font: @size "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: @color;
+}
+
+.code {
+    margin: 20px 50px;
+    background-color: #000;
+    color: #fff;
+    border: 2px dashed #fff;
+    font-family: "Courier New", monospace;
+
+    p {
+        margin: 10px 20px;
+        &::before {
+            content: "$ ";
+            color: #0AFF0A;
+        }
+    }
+}
+
+.countryDetail {
+    position: absolute;
+    
+    
+    height: 500px;
+    width: 400px;
+    z-index: 10001; 
+    
+    padding: 10px;
+    border-radius: 1px;
+    background-color: #FFF;
+    box-shadow: 1px 1px 5px #CCC;
+    font-size: 12px;
+    border: 1px solid #CCC;
+
+    h2 {
+        font-size: 16px;
+    }
+    h3 {
+        font-size: 14px;
+    }
+}
+
+#title {
+    
+    padding-right: 50px;
+    a {
+        padding-left: 50px;
+    }
+}
