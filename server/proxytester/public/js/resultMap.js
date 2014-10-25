@@ -1,26 +1,23 @@
-var countryData ={
-"GBR": {
-    "country": "UK",
-    "numberOfTests": 2,
-    "operators": [
-        {"name": "Three", "numberOfTests": 1, "summary": "no proxying"},
-        {"name": "O2", "numberOfTests": 2, "summary": "proxies present, packet rewriting"},
-        {"name": "EE/T-Mobile", "numberOfTests": 0, "summary": ""}
-    ],
-    "wifi": [
-        {"name": "Wifi 1", "numberOfTests": 1, "summary": "no proxying"},
-        {"name": "Wifi 2", "numberOfTests": 1, "summary": "no proxying"},
-    ],
-    "cities": [ "Cambridge", "Manchester" ]
-}
-};
+/*
+ * Copyright (c) 2014 Andrius Aucinas <andrius.aucinas@cl.cam.ac.uk>
+ * 
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
 
 d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
   var proxyData = JSON.parse(val.response);
   console.log("proxyData", proxyData);
-  d3.json("js/countryLatLong.json", function(error, countries){
   
-
     mapData = proxyData;
     _.map(mapData, function(val){
       return _.defaults(val, {fillKey: "HasData"});
@@ -123,8 +120,6 @@ d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
         this.removeEventListener("click", hideCountryInfo);
       }
     }
-
-  });
 });
 
 function numberWithCommas(x) {
