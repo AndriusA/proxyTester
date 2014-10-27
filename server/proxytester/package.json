@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "express": "3.4.8",
+    "express": "~3.4.8",
     "express-handlebars": "^1.1.0",
     "less-middleware": "1.0.*",
     "lodash-node": "^2.4.1",
@@ -11,6 +11,8 @@
     "node-geocoder": "^2.9.1",
     "optimist": ">= 0.0.1",
     "sqlite3": "^3.0.2",
-    "unirest": "^0.2.7"
+    "unirest": "^0.2.7",
+    "node-whois": "~2.1.0",
+    "prettyjson": "~1.0.0"
   }
 }

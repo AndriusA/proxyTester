@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
+d3.xhr("http://192.95.61.160:3000/data/", "application/json", function(err, val) {
   var proxyData = JSON.parse(val.response);
   console.log("proxyData", proxyData);
   
