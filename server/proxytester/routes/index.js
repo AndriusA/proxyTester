@@ -43,18 +43,23 @@ var putData = function (req, res) {
     	res.json(parsed);
 
         reverseLocation(parsed, function(country, city) {
-            var insertQuery = db.prepare("INSERT INTO anonymised (uuid, country, city, networkType, networkName) VALUES (?,?,?,?,?)");
+            var insertQuery = db.prepare("INSERT INTO anonymised (uuid, country, city, networkType, networkName, summary, globalIP) VALUES (?,?,?,?,?,?,?)");
             // WiFi network names/SSID may be privacy-sensitive; use whois-based network name
+            var global = _.find(data.results, { 'name': "checkLocalAddr-GLOBAL" });
+            var local = _.find(data.results, { 'name': "checkLocalAddr-GLOBAL" });
+            var isGlobal = global.extras == local.extras;
+            // TODO: get the summary
+            var summary = "empty";
+
             if (parsed.networkInfo.type == "WIFI") {
                 whoisNetworkName(parsed, function(networkName) {
                     console.log("Inserting record with ", parsed.networkInfo.type, ", name", networkName);
-                    insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName);    
+                    insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName, summary, isGlobal);    
                 });
             } else {
-                insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, parsed.networkInfo.extra);    
+                insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, parsed.networkInfo.extra, summary, isGlobal);    
             }
         });
-
     });
 };
 
