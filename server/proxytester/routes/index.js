@@ -109,7 +109,7 @@ function whoisNetworkName(data, callback) {
 }
 
 var getAnonymisedData = function(req, res) {
-    db.all("SELECT country, city, networkType, networkName FROM anonymised", function(err, data) {
+    db.all("SELECT country, city, networkType, networkName, summary FROM anonymised", function(err, data) {
         if (err)
             return res.json({});
         

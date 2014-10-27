@@ -34,15 +34,18 @@ module.exports.connect = function() {
 
 function fillInData(db) {
     var anonymisedQuery = db.prepare("INSERT INTO anonymised (uuid, country, city, networkType, networkName, summary) VALUES (?,?,?,?,?,?)");
-    db.run("1", "Lithuania", "Vilnius", "WIFI", "TEO-LT", "Moderate firewalls present");
-    db.run("2", "Lithuania", "Vilnius", "mobile", "Omnitel-LT", "Close to none communication interference");
-    db.run("3", "Finland", "Helsinki", "mobile", "Saunalahti", "No interference");
-    db.run("4", "Finland", "Helsinki", "WIFI", "HELSINKI-UNI", "Moderate firewalls present");
-    db.run("5", "Spain", "Barcelona", "WIFI", "Telefonica-Free", "Moderate firewalls present");
-    db.run("6", "Germany", "Berlin", "mobile", "E-Plus", "Moderate packet rewriting");
-    db.run("7", "United Kingdom", "Cambridge", "mobile", "GiffGaff", "Aggressive firewalls, secure communications affected on most ports. Proxies all ports except 443, 993");
-    db.run("8", "United Kingdom", "Cambridge", "mobile", "T-Mobile", "Aggressive firewalls and proxies, secure communications affected on certain ports: 80, 443");
-    db.run("9", "United Kingdom", "Cambridge", "mobile", "three.co.uk", "Close to none communication interference");
-    db.run("10", "United Kingdom", "Cambridge", "WIFI", "Virgin", "Close to none communication interference");
-    db.run("11", "Germany", "Berlin", "WIFI", "MKSW", "Moderate firewalls present");
+
+    db.serialize(function() {
+        anonymisedQuery.run("a1", "Lithuania", "Vilnius", "WIFI", "TEO-LT", "Moderate firewalls present");
+        anonymisedQuery.run("a2", "Lithuania", "Vilnius", "mobile", "Omnitel-LT", "Close to none communication interference");
+        anonymisedQuery.run("a3", "Finland", "Helsinki", "mobile", "Saunalahti", "No interference");
+        anonymisedQuery.run("a4", "Finland", "Helsinki", "WIFI", "HELSINKI-UNI", "Moderate firewalls present");
+        anonymisedQuery.run("a5", "Spain", "Barcelona", "WIFI", "Telefonica-Free", "Moderate firewalls present");
+        anonymisedQuery.run("a6", "Germany", "Berlin", "mobile", "E-Plus", "Moderate packet rewriting");
+        anonymisedQuery.run("a7", "United Kingdom", "Cambridge", "mobile", "GiffGaff", "Aggressive firewalls, secure communications affected on most ports. Proxies all ports except 443, 993");
+        anonymisedQuery.run("a8", "United Kingdom", "Cambridge", "mobile", "T-Mobile", "Aggressive firewalls and proxies, secure communications affected on certain ports: 80, 443");
+        anonymisedQuery.run("a9", "United Kingdom", "Cambridge", "mobile", "three.co.uk", "Close to none communication interference");
+        anonymisedQuery.run("a10", "United Kingdom", "Cambridge", "WIFI", "Virgin", "Close to none communication interference");
+        anonymisedQuery.run("a11", "Germany", "Berlin", "WIFI", "MKSW", "Moderate firewalls present");
+    });
 }
