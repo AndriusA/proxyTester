@@ -37,7 +37,7 @@ var putData = function (req, res) {
     req.addListener('data', function(chunk) { data += chunk; });
     req.addListener('end', function() {
         var parsed = JSON.parse(data);
-        // console.log("received:" + data);
+        console.log("received:" + data);
         // placeholders (?) are auto-escaped!
         db.run("INSERT INTO testset (uuid, result) VALUES (?, ?)", parsed.uuid, data);
     	res.json(parsed);
@@ -47,6 +47,7 @@ var putData = function (req, res) {
             // WiFi network names/SSID may be privacy-sensitive; use whois-based network name
             if (parsed.networkInfo.type == "WIFI") {
                 whoisNetworkName(parsed, function(networkName) {
+                    console.log("Inserting record with ", parsed.networkInfo.type, ", name", networkName);
                     insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName);    
                 });
             } else {
@@ -66,7 +67,7 @@ function reverseLocation(data, callback) {
     var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
     // console.log("location", data.location);
     geocoder.reverse(data.location.latitude, data.location.longitude, function(err, res) {
-        // console.log(err, res);
+        console.log(err, res);
         var city;
         var country;
         // console.log(res);
@@ -85,22 +86,26 @@ function reverseLocation(data, callback) {
 
 function whoisNetworkName(data, callback) {
     // Find the global IP
-    var result = _.find(data.results, { 'name': "CheckLocalAddressTest-GLOBAL" });
+    var result = _.find(data.results, { 'name': "checkLocalAddr-GLOBAL" });
     var networkName = "UNKNOWN";
     if (result) {
-        whois.lookup(result.srcAddress, function(err, whoisData) {
+	console.log("whois lookup for", result.extras);
+        whois.lookup(result.extras, function(err, whoisData) {
             if (!err) {
                 var regexp = /netname:\s*([A-Za-z0-9_-]*)/i;
                 var match = whoisData.match(regexp);
-                if (match && match.length >= 1)
+                if (match && match.length >= 1){
                     networkName = match[1];
-                callback(networkName);
+                    console.log("networkname for", result.extras, "found to be", networkName);
+		}
             } else {
                 console.log("Error performing a whois lookup:", err);
             }
+            callback(networkName);
         });
+    } else {
+        callback(networkName);
     }
-    callback(networkName);
 }
 
 var getAnonymisedData = function(req, res) {
@@ -108,7 +113,7 @@ var getAnonymisedData = function(req, res) {
         if (err)
             return res.json({});
         
-        // console.log("SQL data:", data);
+        console.log("SQL data:", data);
         // country
         // country code (3 letter)
         // number of tests
