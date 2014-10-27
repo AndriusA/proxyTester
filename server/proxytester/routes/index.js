@@ -114,7 +114,7 @@ function whoisNetworkName(data, callback) {
 }
 
 var getAnonymisedData = function(req, res) {
-    db.all("SELECT country, city, networkType, networkName, summary FROM anonymised", function(err, data) {
+    db.all("SELECT country, city, networkType, networkName, summary, globalIP FROM anonymised", function(err, data) {
         if (err)
             return res.json({});
         
@@ -185,6 +185,7 @@ var getAnonymisedData = function(req, res) {
             aggr.summaries.push(item.summary);
             aggr.summaries = _.uniq(aggr.summaries);
             aggr.summary = aggr.summaries.join("; ");
+            aggr.globalIP = aggr.globalIP || item.globalIP;
         }
         // console.log("MOBILE", prettyjson.render(mobile));
 
