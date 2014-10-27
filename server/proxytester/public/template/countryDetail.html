@@ -8,13 +8,22 @@
     <ul class="list-unstyled">
         {{#each mobile}}
             <li>
-                {{#if numberOfTests}}
-                    <span class="glyphicon glyphicon-ok"></span>
-                    {{@key}} ({{numberOfTests}} tests) - {{summary}}
-                {{else}}
+                {{#if proxiedPorts}}
                     <span class="glyphicon glyphicon-remove"></span>
-                    {{@key}}
-                {{/if}}            
+                {{else}}
+                    <span class="glyphicon glyphicon-ok"></span>
+                {{/if}}
+                    {{@key}} ({{numberOfTests}} tests) - {{summary}}
+                    {{#if globalIP}}
+                        . Global IP provided
+                    {{/if}}
+                {{#if proxiedPorts}}
+                    <br />
+                    Communications proxied on ports:
+                    {{#each proxiedPorts}}
+                        {{.}}
+                    {{/each}}
+                {{/if}}
             </li>
         {{/each}}
     </ul>
@@ -27,6 +36,16 @@
             {{#each WIFI}}
                 <li>
                 {{@key}} ({{numberOfTests}} tests) - {{summary}}
+                {{#if globalIP}}
+                    . Global IP provided
+                {{/if}}
+                {{#if proxiedPorts}}
+                    <br />
+                    Communications proxied on ports:
+                    {{#each proxiedPorts}}
+                        {{.}}
+                    {{/each}}
+                {{/if}}
                 </li>
             {{/each}}
         </ul>

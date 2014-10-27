@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-d3.xhr("http://proxytester.smart-e.org/data/", "application/json", function(err, val) {
+d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
   var proxyData = JSON.parse(val.response);
   console.log("proxyData", proxyData);
   
@@ -83,7 +83,7 @@ d3.xhr("http://proxytester.smart-e.org/data/", "application/json", function(err,
       var hasdata = this.getAttribute("data-info");
       if (hasdata) {
         var data = JSON.parse(hasdata);
-        console.log("country info", i, hasdata, data);
+        // console.log("country info", i, hasdata, data);
         var element = document.querySelector("#countryDetail");
         var width = document.querySelector("#map svg").clientWidth;
         var mouse = d3.mouse(this);

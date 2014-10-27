@@ -43,21 +43,31 @@ var putData = function (req, res) {
     	res.json(parsed);
 
         reverseLocation(parsed, function(country, city) {
-            var insertQuery = db.prepare("INSERT INTO anonymised (uuid, country, city, networkType, networkName, summary, globalIP) VALUES (?,?,?,?,?,?,?)");
-            // WiFi network names/SSID may be privacy-sensitive; use whois-based network name
-            var global = _.find(data.results, { 'name': "checkLocalAddr-GLOBAL" });
-            var local = _.find(data.results, { 'name': "checkLocalAddr-GLOBAL" });
-            var isGlobal = global.extras == local.extras;
+            var insertQuery = db.prepare("INSERT INTO anonymised "
+                +"(uuid, country, city, networkType, networkName, summary, globalIP, proxiedPorts) "
+                +"VALUES (?,?,?,?,?,?,?,?)");
+
+            var global = _.find(parsed.results, { 'name': "checkLocalAddr-GLOBAL" });
+            var local = _.find(parsed.results, { 'name': "checkLocalAddr-LOCAL" });
+            var isGlobal = global.extras === local.extras;
+            
             // TODO: get the summary
             var summary = "empty";
 
+            var ports = _.chain(parsed.result)
+                .where({ 'name': 'checkHiddenProxies', "result": false })
+                .pluck("dstPort")
+                .value();
+
+            // WiFi network names/SSID may be privacy-sensitive; use whois-based network name
             if (parsed.networkInfo.type == "WIFI") {
                 whoisNetworkName(parsed, function(networkName) {
-                    console.log("Inserting record with ", parsed.networkInfo.type, ", name", networkName);
-                    insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, networkName, summary, isGlobal);    
+                    insertQuery.run([parsed.uuid, country, city, parsed.networkInfo.type, 
+                        networkName, summary, isGlobal, JSON.stringify(ports)]);
                 });
             } else {
-                insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, parsed.networkInfo.extra, summary, isGlobal);    
+                insertQuery.run(parsed.uuid, country, city, parsed.networkInfo.type, 
+                    parsed.networkInfo.extra, summary, isGlobal, JSON.stringify(ports));
             }
         });
     });
@@ -72,7 +82,8 @@ function reverseLocation(data, callback) {
     var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
     // console.log("location", data.location);
     geocoder.reverse(data.location.latitude, data.location.longitude, function(err, res) {
-        // console.log(err, res);
+        if (err)
+            console.log("Geocoder reverse error:", err);
         var city;
         var country;
         // console.log(res);
@@ -114,7 +125,10 @@ function whoisNetworkName(data, callback) {
 }
 
 var getAnonymisedData = function(req, res) {
-    db.all("SELECT country, city, networkType, networkName, summary, globalIP FROM anonymised", function(err, data) {
+    var getDataQuery = "SELECT country, city, networkType, networkName, summary, "
+        +"globalIP, proxiedPorts FROM anonymised";
+        
+    db.all(getDataQuery, function(err, data) {
         if (err)
             return res.json({});
         
@@ -182,10 +196,10 @@ var getAnonymisedData = function(req, res) {
             aggr.numberOfTests++;
             aggr.testedCities.push(item.city);
             aggr.testedCities = _.uniq(aggr.testedCities);
-            aggr.summaries.push(item.summary);
-            aggr.summaries = _.uniq(aggr.summaries);
+            aggr.summaries = _.union(aggr.summaries, [item.summary]);
             aggr.summary = aggr.summaries.join("; ");
             aggr.globalIP = aggr.globalIP || item.globalIP;
+            aggr.proxiedPorts = _.union(JSON.parse(item.proxiedPorts), aggr.proxiedPorts);
         }
         // console.log("MOBILE", prettyjson.render(mobile));
 
@@ -205,7 +219,7 @@ var getAnonymisedData = function(req, res) {
 
         // Re-key by country code rather than country - needed for visualisation
         output = _.indexBy(output, 'countryCode');
-        console.log("output", prettyjson.render(output));
+        // console.log("output", prettyjson.render(output));
         res.json(output);
         
     });
