@@ -35,6 +35,7 @@ d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
           .translate([width/2, height/2]);
     var path = d3.geo.path()
           .projection(projection);
+    var active;
 
     this.map = new Datamap({
       scope: 'world',
@@ -55,11 +56,13 @@ d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
         HasData: '#8d8',
         'Selected': '#1d1',
         'Visitors': '#dcd',
+        'Cities': '#FF4719',
         defaultFill: '#ddd',
       },
       data: mapData,
       done: addCountryInfo
     });
+    var worldMap = this.map;
 
     // var inLabelCanvas = d3.select('#map').select("svg").append("g");
     // var outLabelCanvas = d3.select('#map').select("svg").append("g");
@@ -77,8 +80,38 @@ d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
     var clicked = false;
     function countryInfoClick(geography, i) {
       clicked = true;
+
+      if (active === geography) return reset();
+
+      var hasdata = this.getAttribute("data-info");
+      var b = path.bounds(geography);
+      if (hasdata) {
+        var data = JSON.parse(hasdata);
+        var bubbleSize = (b[1][0] - b[0][0]) / width * 20;
+        console.log("bubble size", bubbleSize);
+        _.mapValues(data.coordinates, function(val){return _.assign(val, {radius: bubbleSize, fillKey: 'Cities'})})
+        worldMap.bubbles(data.coordinates, {
+          borderWidth: 0,
+          // popupOnHover: false,
+          highlightOnHover: false,
+          fillOpacity: .75,
+        });
+      }
+
+
+      var g = d3.select("#map").select("svg").selectAll("g");
+      g.selectAll(".active").classed("active", false);
+      d3.select(this).classed("active", active = geography);
+
+      
+      g.transition().duration(750).attr("transform",
+          "translate(" + projection.translate() + ")"
+          + "scale(" + .95 / Math.max((b[1][0] - b[0][0]) / width, (b[1][1] - b[0][1]) / height) + ")"
+          + "translate(" + -(b[1][0] + b[0][0]) / 2 + "," + -(b[1][1] + b[0][1]) / 2 + ")");
+
       return countryInfo.bind(this)(geography, i);
     }
+
     function countryInfo(geography, i) {
       var hasdata = this.getAttribute("data-info");
       if (hasdata) {
@@ -106,6 +139,14 @@ d3.xhr("http://127.0.0.1:3000/data/", "application/json", function(err, val) {
         document.querySelector("#countryDetail button.close").addEventListener("click", hideCountryInfo, false);
       }
     }
+
+    function reset() {
+      worldMap.bubbles([]);
+      var g = d3.select("#map").select("svg").select("g");
+      g.selectAll(".active").classed("active", active = false);
+      g.transition().duration(750).attr("transform", "");
+    }
+
 
     function hideCountryInfoOut() {
       if (!clicked)

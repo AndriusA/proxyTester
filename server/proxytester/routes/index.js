@@ -28,6 +28,8 @@ require(__dirname+'/../libs/lodash-mixins.js')(_);
 var database = require(__dirname + '/../libs/database.js');
 var db = database.connect();
 
+var cityLocations = {};
+
 var index = function (req, res) {
     res.render('index', { title: 'ProxyTester' });
 };
@@ -74,12 +76,7 @@ var putData = function (req, res) {
 };
 
 function reverseLocation(data, callback) {
-    var geocoderProvider = 'google';
-    var httpAdapter = 'https';
-    var extra = {
-        apiKey: 'AIzaSyAc95by91bSjfLG8dmU3AafsNZ6skDugMs',
-    };
-    var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
+    var geocoder = getGeocoder();
     // console.log("location", data.location);
     geocoder.reverse(data.location.latitude, data.location.longitude, function(err, res) {
         if (err)
@@ -96,8 +93,39 @@ function reverseLocation(data, callback) {
             country = "UNKNOWN";
         }
 
+        if (city != "UNKNOWN" && country != "UNKNOWN")
+            cacheLocation(city, country);
+
         callback(country, city);
     });
+}
+
+function getGeocoder() {
+    var geocoderProvider = 'google';
+    var httpAdapter = 'https';
+    var extra = {
+        apiKey: 'AIzaSyAc95by91bSjfLG8dmU3AafsNZ6skDugMs',
+    };
+    var geocoder = require('node-geocoder').getGeocoder(geocoderProvider, httpAdapter, extra);
+    return geocoder;
+}
+
+function cacheLocation(city, country) {
+    var geocoder = getGeocoder();
+    if (!cityLocations[country])
+        cityLocations[country] = {};
+    if (!cityLocations[country][city]) {
+        cityLocations[country][city] = {};
+        console.log("getting location:", city, country);
+        geocoder.geocode(city+", "+country, function(err, res) {
+            if (!err) {
+                cityLocations[country][city] = {latitude: res[0].latitude, longitude: res[0].longitude, name: city};
+                // console.log(cityLocations);
+            } else {
+                console.log("Error while getting location for ", city, country, err);
+            }
+        });
+    }
 }
 
 function whoisNetworkName(data, callback) {
@@ -127,7 +155,7 @@ function whoisNetworkName(data, callback) {
 var getAnonymisedData = function(req, res) {
     var getDataQuery = "SELECT country, city, networkType, networkName, summary, "
         +"globalIP, proxiedPorts FROM anonymised";
-        
+
     db.all(getDataQuery, function(err, data) {
         if (err)
             return res.json({});
@@ -150,7 +178,11 @@ var getAnonymisedData = function(req, res) {
         var countryCodes = _.zipObject(countriesT[8], countriesT[10]);
 
         // Exclude results with unknown location
-        data = _.reject(data, {'country': 'UNKNOWN'});        
+        data = _.reject(data, {'country': 'UNKNOWN'});
+
+        _.each(data, function(val) {
+            cacheLocation(val.city, val.country);
+        })        
 
 
         // TODO: extract summary from DB data
@@ -169,7 +201,21 @@ var getAnonymisedData = function(req, res) {
         // Collect the cities per country
         var countryCities = _.chain(data)
             .groupBy('country')
-            .mapValues( function(val){ return {cities: _.uniq(_.pluck(val, 'city'))} })
+            .mapValues( function(val){
+                var cities = _.uniq(_.pluck(val, 'city'));
+                var coordinates = _.map(cities, function(city) {
+                    var loc = null;
+                    try {
+                        loc = cityLocations[val[0].country][city];
+                        console.log("got location", val[0].country, city, loc);
+                    } catch (e) {
+                        console.log("error getting city location:", val[0].country, city, e);
+                    }
+                    return loc;
+                })
+                console.log("collected coordinates", coordinates);
+                return {cities: cities, coordinates: coordinates};
+            })
             .value();
 
         // Aggregate network data:
