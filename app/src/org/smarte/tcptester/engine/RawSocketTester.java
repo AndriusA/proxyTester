@@ -50,7 +50,8 @@ public class RawSocketTester implements Runnable
     public static final int Testsuite_ID = 0002;
     private static final String TESTER_BINARY = "tcptester";
     private static final String IPTABLES_CMD = 
-        "iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP";
+        "iptables -%c OUTPUT -p tcp --tcp-flags RST RST -d %s -m ttl --ttl-gt %d -j DROP";
+        //"iptables -%c OUTPUT -p tcp --tcp-flags RST RST --sport %d --dport %d -d %s -j DROP";
 
     private SocketTesterServer mTesterServer;
     private Context mActivity;
@@ -129,23 +130,15 @@ public class RawSocketTester implements Runnable
         ArrayList<TCPTest> tests = buildTests(mServerAddress, mServerPorts);
     
         int testNo = 0;
-        boolean iptablesFailed = false;
+        boolean iptablesAdded = preventRst(mServerAddress);
+
         for (TCPTest test : tests) {
             // Exit immediately if iptables command has not been successful
-            if (iptablesFailed)
+            if (!iptablesAdded)
                 break;
             testNo++;
             sendResponseMessage(TestEngine.TEST_COMPLETED);
             Log.d(TAG, "Running test " + test.name);
-
-            boolean iptablesAdded = false;
-            try {
-                iptablesAdded = preventRst(test.srcPort, test.dstPort, test.dst);
-            } catch (Exception e) {
-                Log.e(TAG, "Exception while setting iptables rule", e);
-                iptablesFailed = true;
-                break;
-            }
 
             try {
                 // Try runnig the test regardless
@@ -155,19 +148,19 @@ public class RawSocketTester implements Runnable
             } catch (Exception e) {
                 Log.d(TAG, "Exception caught when running test: ", e);
             }
-
-            try {
-                boolean allowed = allowRst(test.srcPort, test.dstPort, test.dst);
-                if (iptablesAdded && !allowed) {
-                    Log.e(TAG, "IPTables rule added but not removed!");
-                    iptablesFailed = true;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Exception while resetting iptables", e);
-                iptablesFailed = true;
-            }
         } 
        
+        boolean iptablesFailed = false;
+        if (iptablesAdded) {
+            boolean allowed = allowRst(mServerAddress);
+            if (!allowed) {
+                Log.e(TAG, "IPTables rule added but not removed!");
+                iptablesFailed = true;
+            }
+        } else {
+            iptablesFailed = true;
+        }
+
         try {
             // All tests finished, finish the communication thread
             mTesterServer.finish();
@@ -196,25 +189,26 @@ public class RawSocketTester implements Runnable
 
     private ArrayList<TCPTest> buildTests(InetAddress serverAddress, Integer[] serverPorts) {
         ArrayList<TCPTest> basicTests = new ArrayList<TCPTest>();
-        basicTests.add(new TCPTest("ACK-only", TCPTest.ACK_ONLY));
-        basicTests.add(new TCPTest("URG-only", TCPTest.URG_ONLY));
-        // basicTests.add(new TCPTest("ACK-URG", TCPTest.ACK_URG));
-        basicTests.add(new TCPTest("plain-URG", TCPTest.PLAIN_URG));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect", TCPTest.ACK_CHECKSUM_INCORRECT));
-        basicTests.add(new TCPTest("ACK-checksum", TCPTest.ACK_CHECKSUM));
-        basicTests.add(new TCPTest("ACK-data", TCPTest.ACK_DATA));
-        // basicTests.add(new TCPTest("URG-URG", TCPTest.URG_URG));
-        basicTests.add(new TCPTest("URG-checksum", TCPTest.URG_CHECKSUM));
-        basicTests.add(new TCPTest("URG-checksum-incorrect", TCPTest.URG_CHECKSUM_INCORRECT));
-        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 1));
-        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 2));
-        basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 4));
-        // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 8));
-        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_EST, 1));
-        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 2));
-        basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 4));
-        // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 8));
-        basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", TCPTest.ACK_CHECKSUM_INCORRECT_SEQ));
+        // basicTests.add(new TCPTest("ACK-only", TCPTest.ACK_ONLY));
+        // basicTests.add(new TCPTest("URG-only", TCPTest.URG_ONLY));
+        // // basicTests.add(new TCPTest("ACK-URG", TCPTest.ACK_URG));
+        // basicTests.add(new TCPTest("plain-URG", TCPTest.PLAIN_URG));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect", TCPTest.ACK_CHECKSUM_INCORRECT));
+        // basicTests.add(new TCPTest("ACK-checksum", TCPTest.ACK_CHECKSUM));
+        // basicTests.add(new TCPTest("ACK-data", TCPTest.ACK_DATA));
+        // // basicTests.add(new TCPTest("URG-URG", TCPTest.URG_URG));
+        // basicTests.add(new TCPTest("URG-checksum", TCPTest.URG_CHECKSUM));
+        // basicTests.add(new TCPTest("URG-checksum-incorrect", TCPTest.URG_CHECKSUM_INCORRECT));
+        // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 1));
+        // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 2));
+        // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 4));
+        // // basicTests.add(new TCPTest("Reserved-syn", TCPTest.RESERVED_SYN, 8));
+        // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_EST, 1));
+        // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 2));
+        // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 4));
+        // // basicTests.add(new TCPTest("Reserved-est", TCPTest.RESERVED_SYN, 8));
+        // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", TCPTest.ACK_CHECKSUM_INCORRECT_SEQ));
+        basicTests.add(new TCPTest("Proxy-DoubleSyn", TCPTest.PROXY_DOUBLE_SYN));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         Random rng = new Random(System.currentTimeMillis());
@@ -222,6 +216,7 @@ public class RawSocketTester implements Runnable
             for (int dstPort : serverPorts) {
                 // Unprivileged random port number in [1025...65536)
                 int srcPort = 1024 + 1 + rng.nextInt(65536-1024-1);
+                // int srcPort = 13345;
                 completeTests.add(new TCPTest(test, serverAddress, dstPort, mLocalAddress, srcPort));
             }
         }
@@ -270,11 +265,13 @@ public class RawSocketTester implements Runnable
         }
     }
     
-    private boolean preventRst(int src_port, int dst_port, InetAddress dst) {
-        String cmd = String.format(IPTABLES_CMD, 'A', src_port, dst_port, dst.getHostAddress());
-        Command shellCmd = new CommandCapture(0, cmd);
-        // Log.d(TAG, "Iptables command to execute: " + cmd);
+    private boolean preventRst(InetAddress dst) {
+        String cmd = "";
         try {
+            cmd = String.format(IPTABLES_CMD, 'A', dst.getHostAddress(), 60);
+            Command shellCmd = new CommandCapture(0, cmd);
+            Log.d(TAG, "Iptables command to execute: " + cmd);
+        
             Shell.runRootCommand(shellCmd);
             while (true) {
                 if (shellCmd.isFinished())
@@ -285,27 +282,32 @@ public class RawSocketTester implements Runnable
                 }
             }
         } catch (IOException e) {
-            Log.e(TAG, "Failed to enable iptables rule " + cmd, e);
+            Log.e(TAG, "iptables - Failed to enable iptables rule " + cmd, e);
             return false;
         } catch (InterruptedException e) {
-            Log.e(TAG, "Failed to enable iptables rule - interrupted while waiting to finish ", e);
+            Log.e(TAG, "iptables - Failed to enable iptables rule - interrupted while waiting to finish ", e);
             return false;
         } catch (TimeoutException e) {
-            Log.e(TAG, "Timed out getting root shell", e);
+            Log.e(TAG, "iptables - Timed out getting root shell", e);
             return false;
         } catch (RootDeniedException e) {
-            Log.e(TAG, "Root denied for shell, quitting", e);
+            Log.e(TAG, "iptables - Root denied for shell, quitting", e);
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "iptables - Unknown exception", e);
             return false;
         }
-        // Log.d(TAG, "iptables rule enabled");
+        Log.d(TAG, "iptables - iptables rule enabled");
         return true;
     }
 
-    private boolean allowRst(int src_port, int dst_port, InetAddress dst) {
-        String cmd = String.format(IPTABLES_CMD, 'D', src_port, dst_port, dst.getHostAddress());
-        Command shellCmd = new CommandCapture(1, cmd);
-        // Log.d(TAG, "Iptables command to execute: " + cmd);
+    private boolean allowRst(InetAddress dst) {
+        String cmd = "";
         try {
+            cmd = String.format(IPTABLES_CMD, 'D', dst.getHostAddress(), 60);
+            Command shellCmd = new CommandCapture(1, cmd);
+            Log.d(TAG, "Iptables command to execute: " + cmd);
+            
             Shell.runRootCommand(shellCmd);
             while (true) {
                 if (shellCmd.isFinished())
@@ -327,8 +329,11 @@ public class RawSocketTester implements Runnable
         } catch (RootDeniedException e) {
             Log.e(TAG, "Root denied for shell, quitting", e);
             return false;
+        } catch (Exception e) {
+            Log.e(TAG, "iptables - Unknown Exception", e);
+            return false;
         }
-        // Log.d(TAG, "iptables rule disabled");
+        Log.d(TAG, "iptables rule disabled");
         return true;
     }
 }

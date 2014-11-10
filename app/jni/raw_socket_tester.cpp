@@ -58,6 +58,7 @@ enum opcode_t : uint8_t {
     ACK_DATA = 15,
     GET_GLOBAL_IP = 21,
     RET_GLOBAL_IP = 22,
+    PROXY_DOUBLE_SYN = 41,
     RESULT_NOT_IMPLEMENTED = 51,
 };
 
@@ -68,7 +69,7 @@ struct ipcmsg {
 };
 
 int main() {
-    LOGI("Starting TCPTester service v%d", 7);
+    LOGI("Starting TCPTester service v%d", 8);
     int s, t, len;
     struct sockaddr_un local;
     char buffer[BUFLEN];
@@ -122,7 +123,7 @@ int main() {
             test_error result = test_failed;    // by default
             int result_code = 0;
             opcode_t currentTest = ipc->opcode;
-            if ( currentTest >= ACK_ONLY && currentTest <= GET_GLOBAL_IP ) {
+            if ( currentTest >= ACK_ONLY && currentTest <= RESULT_NOT_IMPLEMENTED ) {
                 uint32_t source = 0, destination = 0;
                 uint16_t src_port = 0, dst_port = 0;
                 for (int b = 0; b < 4; b++) {
@@ -133,6 +134,8 @@ int main() {
                     src_port |= ( (buffer[2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                     dst_port |= ( (buffer[2 + 4 + 2 + 4 + b]) & (char)0xFF ) << (8 * (1-b));
                 }
+                LOGD("Read src port %d", src_port);
+                LOGD("Read dst port %d", dst_port);
                 uint8_t reserved = 0;
                 if ((currentTest == RESERVED_SYN || currentTest == RESERVED_EST) && n > 2+4+2+4+2) {
                     reserved = buffer[2+4+2+4+2];
@@ -178,6 +181,8 @@ int main() {
                     case ACK_CHECKSUM_INCORRECT_SEQ:
                         result = runTest_ack_checksum_incorrect_seq(source, src_port, destination, dst_port);
                         break;
+                    case PROXY_DOUBLE_SYN:
+                        result = runTest_doubleSyn(source, src_port, destination, dst_port);
                     default:
                         result = test_not_implemented;
                         break;
@@ -211,3 +216,17 @@ int main() {
 }
 
 // iptables -A OUTPUT -p tcp --tcp-flags RST RST --dport 6969 -j DROP 
+// iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -j DROP  && iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -m ttl --ttl-gt 60  -j ACCEPT 
+// ?? iptables -A INPUT -p tcp -s 192.95.61.161 -j DROP 
+
+// tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
+
+// iptables -A INPUT -p tcp -s 192.95.61.161 -j DROP  && tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
+// iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -j DROP  && iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -m ttl --ttl-lt 60  -j ACCEPT && tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
+// iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -m ttl --ttl-gt 60 -j DROP  && tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
+
+// http://www.caida.org/workshops/isma/1102/slides/aims1102_sbauer.pdf
+// following don't work:
+// iptables -t mangle -A OUTPUT -p tcp -d 192.95.61.161 -m tos --tos 0x00 -j TOS --set-tos 0x01
+// iptables -t mangle -A OUTPUT -p tcp -d 192.95.61.161 -m ttl -j TTL --ttl-dec 1
+// (modules not present...) cat /proc/net/ip_tables_targets

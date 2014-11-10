@@ -139,8 +139,10 @@ public class SocketTesterServer extends Thread {
         command.put(commandLength);
         command.put(opcode);
         command.put(src.getAddress());
+        Log.d(TAG, "Writing src port" + Integer.toString(srcPort));
         command.putShort((short) srcPort);
         command.put(dst.getAddress());
+        Log.d(TAG, "Writing dst port" + Integer.toString(dstPort));
         command.putShort((short) dstPort);
         if (extra > 0)
             command.put(extra);

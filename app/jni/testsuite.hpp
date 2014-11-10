@@ -42,6 +42,8 @@
 #define BUFLEN 65535
 #endif
 
+test_error setupSocket(int &sock);
+
 // Test sending a specific value in the ACK field of a TCP SYN packet, nothing else changed.
 // ACK is set to 0xbeef0001 (opcode), once connection is established, payload contains this value
 // IFF the received SYN had ACK set to 0xbeef0001
@@ -83,6 +85,8 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
 // Currently only successful if setting every one of them individually succeeds
 // returns test_complete_complex_bits + bitmap of the passed bits
 test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved);
+
+test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
 
 uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
 

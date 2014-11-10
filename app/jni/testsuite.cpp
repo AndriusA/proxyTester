@@ -36,7 +36,7 @@ test_error setupSocket(int &sock) {
         LOGE("setsockopt() failed: %s", strerror(errno));
         return test_failed;
     } else {
-        LOGD("setsockopt() ok");
+        LOGD("setsockopt IP_HDRINCL ok");
     }
 
     struct timeval tv;
@@ -44,6 +44,8 @@ test_error setupSocket(int &sock) {
     tv.tv_usec = 0;  // Not init'ing this can cause strange errors
     if ( setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) == -1 ) {
         LOGE("setsockopt receive timeout failed: %s", strerror(errno));
+    } else {
+        LOGD("setsockopt timeout ok");
     }
 
     return success;

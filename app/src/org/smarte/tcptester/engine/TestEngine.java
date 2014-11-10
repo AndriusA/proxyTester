@@ -64,7 +64,8 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
     public static final int TESTSUITE_ERROR_OTHER = 169;
 
 	public static final String TestServer = "192.95.61.161";
-	public static final Integer TestPorts[] = new Integer[]{80, 443, 993, 8000, 5228, 6969};
+	// public static final Integer TestPorts[] = new Integer[]{80, 443, 993, 8000, 5228, 6969};
+    public static final Integer TestPorts[] = new Integer[]{8000};
 
     private Context mActivity;
     private ProgressBar mProgress;

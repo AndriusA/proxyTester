@@ -189,8 +189,10 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
             uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint32_t &data_read)
 {
     int packet_length = receivePacket(sock, ip, tcp, exp_src, exp_dst);
-    if (packet_length < 0) 
+    if (packet_length < 0) {
+        LOGE("SYNACK packet receive length < 0");
         return receive_error;
+    }
     if (packet_length >= IPHDRLEN + TCPHDRLEN)
         data_read = packet_length - IPHDRLEN - TCPHDRLEN;
     if (!tcp->syn || !tcp->ack) {
@@ -198,7 +200,7 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
         return protocol_error;
     }
     if (seq_local != ntohl(tcp->ack_seq)) {
-        LOGE("SYNACK packet unexpected ACK number: %d, %d", seq_local, ntohl(tcp->ack_seq));
+        LOGE("SYNACK packet unexpected ACK number: %u, %u", seq_local, ntohl(tcp->ack_seq));
         return sequence_error;
     }
     if (synack_urg != 0 && ntohs(tcp->urg_ptr) != synack_urg) {
@@ -228,13 +230,21 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
 {
+    uint32_t initial_seq = htonl(random() % 65535);
+    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
+}
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            uint32_t initial_seq) 
+{
     // IP packet with TCP and no payload
     int datalen = 0;
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
 
     tcp->source     = src->sin_port;
     tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(random() % 65535);
+    tcp->seq        = htonl(initial_seq);
     tcp->ack_seq    = htonl(syn_ack);
     tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
     tcp->doff       = 5;                        // Data offset 5 octets (no options)
@@ -249,6 +259,31 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->check      = 0;
     tcp->check      = tcpChecksum(ip, tcp, datalen);
     // printPacketInfo(ip, tcp);
+}
+
+void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res)
+{
+    // IP packet with TCP and no payload
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+    tcp->source     = src->sin_port;
+    tcp->dest       = dst->sin_port;
+    tcp->seq        = htonl(seq);
+    tcp->ack_seq    = htonl(ack_seq);
+    tcp->res1       = res & 0xF;            // 4 bits reserved field
+    tcp->doff       = 5;                        // Data offset 5 octets (no options)
+    tcp->ack        = 0;
+    tcp->psh        = 0;
+    tcp->rst        = 1;
+    tcp->urg        = 0;
+    tcp->syn        = 0;
+    tcp->fin        = 0;
+    tcp->window     = htons(TCPWINDOW);
+    tcp->urg_ptr    = htons(urg);
+    tcp->check      = 0;
+    tcp->check      = tcpChecksum(ip, tcp, datalen);
 }
 
 // Build a TCP/IP ACK packet with the given

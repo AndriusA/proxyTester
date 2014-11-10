@@ -86,3 +86,23 @@ test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
 test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote, int receiveDataLength);
+
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res);
+
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            uint32_t initial_seq);
+
+test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
+            struct iphdr *ip, struct tcphdr *tcp,
+            struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
+            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint32_t &data_read);
+
+void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res);
+
+bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len);

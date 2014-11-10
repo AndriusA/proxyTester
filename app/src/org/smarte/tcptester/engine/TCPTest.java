@@ -40,6 +40,10 @@ public class TCPTest implements Parcelable {
     public static final int RESERVED_EST = 12;
     public static final int ACK_CHECKSUM_INCORRECT_SEQ = 13;
 
+    //RawSocketTester Proxy tests
+
+    public static final int PROXY_DOUBLE_SYN = 41;
+
     //Netalyzr tests
     public static final int CHECK_LOCAL_ADDRESS = 31;
     public static final int CHECK_UDP = 32;

@@ -20,7 +20,8 @@ TCPTESTER_SOURCES := \
         raw_socket_tester.cpp \
         util.cpp \
         tcp_basic.cpp \
-        testsuite.cpp
+        testsuite.cpp \
+        proxy_testsuite.cpp
 
 LOCAL_MODULE    	:= tcptester
 LOCAL_CPPFLAGS	 	+= -std=c++11
