@@ -62,7 +62,8 @@ test_error handshake_syndata(struct sockaddr_in *src, struct sockaddr_in *dst,
     char send_payload[] = "HELLO_reserved_EST";
     int send_length = strlen(send_payload);
     uint32_t initial_seq = htonl(random() % 65535);
-    buildTcpSyn_data(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq, send_payload, send_length);
+    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
+    appendData(ip, tcp, send_payload, send_length);
     if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len))) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
         return send_error;
@@ -352,7 +353,8 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
 
     // char send_payload_rst[] = "CONNECTION_RESET_BY_PEER";
     // int send_length_rst = strlen(send_payload_rst);
-    // buildTcpRst_data(&src2, &dst, ip_2, tcp_2, ntohl(tcp_2->seq), ntohl(tcp_2->ack_seq), 0, 0, send_payload_rst, send_length_rst);
+    // buildTcpRst_data(&src2, &dst, ip_2, tcp_2, ntohl(tcp_2->seq), ntohl(tcp_2->ack_seq), 0, 0)
+    // appendData(ip, tcp, send_payload_rst, send_length_rst);
     // LOGD("Send TCP RST");
     // if (!sendPacket(sock, buffer_2, &dst, ntohs(ip_2->tot_len))) {
     //     LOGE("TCP doubleSYN RST failure: %s", strerror(errno));

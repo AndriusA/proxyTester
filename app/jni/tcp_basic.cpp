@@ -82,13 +82,11 @@ uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
     LOGD("Checksum NATing recalculated: %d, %04X", checksum, checksum);
     return (uint16_t) checksum;
 }
+
 uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp) {
     uint32_t checksum = ntohs(tcp->check);
-    // Add back destination (own!) IP address and port number to undo what NAT modifies
-    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
-    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
-
-    checksum = csum_add(checksum, ntohs(tcp->dest));
+    // Undo the simple NATing
+    checksum = undo_natting(ip, tcp);
 
     checksum = csum_add(checksum, ntohs(tcp->seq & 0xFFFF));
     checksum = csum_add(checksum, ntohs((tcp->seq >> 16) & 0xFFFF));
@@ -175,6 +173,159 @@ bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len) 
     return true;
 }
 
+
+void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen) {
+    char *dataStart = (char*) ip + IPHDRLEN + (tcp->doff * 4);
+    memcpy(dataStart, data, datalen);
+    ip->tot_len = htons(ntohs(ip->tot_len) + datalen);
+    recomputeTcpChecksum(ip, tcp);
+}
+
+void tcpZeroFlags(struct tcphdr *tcp) {
+    tcp->ack = 0;
+    tcp->psh = 0;
+    tcp->rst = 0;
+    tcp->urg = 0;
+    tcp->syn = 0;
+    tcp->fin = 0;
+}
+
+void tcpDefaultFields(struct tcphdr *tcp, uint16_t source, uint16_t dest, 
+            uint32_t seq, uint32_t ack_seq)
+{
+    tcp->source     = source;
+    tcp->dest       = dest;
+    tcp->seq        = htonl(seq);
+    tcp->ack_seq    = htonl(ack_seq);
+    tcp->res1       = 0;            
+    tcp->doff       = 5;                // Data offset 5 octets (no options)
+    tcp->window     = htons(TCPWINDOW);
+    tcp->urg_ptr    = 0;
+}
+
+// Build a TCP/IP SYN packet with the given
+// ACK number, URG pointer and reserved field values
+// Packet is pass-by-reference, new values stored there
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
+{
+    uint32_t initial_seq = htonl(random() % 65535);
+    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
+}
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t ack_seq, uint32_t syn_urg, uint8_t syn_res,
+            uint32_t seq) 
+{
+    // IP packet with TCP and no payload
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpZeroFlags(tcp);
+    tcp->syn        = 1;
+    tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
+    tcp->urg_ptr    = htons(syn_urg);
+    recomputeTcpChecksum(ip, tcp);
+}
+
+void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res)
+{
+    // IP packet with TCP and no payload
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpZeroFlags(tcp);
+    tcp->rst        = 1;
+    tcp->res1       = res & 0xF;            // 4 bits reserved field
+    tcp->urg_ptr    = htons(urg);
+    recomputeTcpChecksum(ip, tcp);
+}
+
+
+// Build a TCP/IP ACK packet with the given
+// sequence numbers, everything else as standard, valid TCP
+void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq, uint32_t ack_seq,
+            uint8_t reserved) 
+{
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpZeroFlags(tcp);
+    tcp->ack = 1;
+    recomputeTcpChecksum(ip, tcp);
+}
+void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq_local, uint32_t seq_remote) 
+{
+    uint8_t reserved = 0;
+    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote, reserved);
+}
+
+// Build a TCP/IP FIN packet with the given
+// sequence numbers, everything else as standard, valid TCP
+void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp,
+            uint32_t seq_local, uint32_t seq_remote) 
+{
+    // IP packet with TCP and no payload
+    int datalen = 0;
+    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq_local, seq_remote);
+    tcpZeroFlags(tcp);
+    tcp->ack = 1;
+    tcp->fin = 1;
+    recomputeTcpChecksum(ip, tcp);
+}
+
+void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
+    uint8_t option_kind, uint8_t option_length, char option_data[])
+
+{
+    // Find the length of data in the packet - total packet length, 
+    // minus IP header and tcp header length through daa offset
+    uint8_t data_offset = tcp->doff * 4;
+    LOGD("option: data offset (bytes) = %d", data_offset);
+    int datalen = ntohs(ip->tot_len) - IPHDRLEN - data_offset;
+    LOGD("option: data length (bytes) = %d", datalen);
+    // Will add NOP options for alignment
+    uint8_t nops = ((option_length / 4) + 1) * 4 - option_length;
+    LOGD("option: nops for the option %d = %d (length %d)", option_kind, nops, option_length);
+    // This is where the data starts
+    char *dataStart = (char*) ip + IPHDRLEN + data_offset;
+    // Once the data is moved, the appended option will start here
+    char *optionStart = dataStart;
+    if (datalen > 0) {    
+        // Move all the data by the option length
+        memmove(dataStart, dataStart + nops + option_length, datalen);
+    }
+    // Increase packet length
+    LOGD("option: prior total IP length = %d", ntohs(ip->tot_len));
+    ip->tot_len = htons(ntohs(ip->tot_len) + nops + option_length);
+    LOGD("option: total IP length with the option = %d", ntohs(ip->tot_len));
+    tcp->doff = tcp->doff + (nops + option_length) / 4;
+    LOGD("option: new data offset %d", tcp->doff);
+
+    for (int n = 0; n < nops; n++) {
+        // the NOP option
+        *(optionStart + n) = (char) 0x01;  
+    }
+    *(optionStart + nops) = (char) option_kind;
+    if (option_length >= 2) {
+        *(optionStart + nops + 1) = (char) option_length;
+        if (option_length > 2) {
+            memcpy(optionStart + nops + 2, option_data, option_length - 2);
+        }
+    }
+
+    recomputeTcpChecksum(ip, tcp);
+}
+
 // Function to receive SYNACK packet of TCP's three-way handshake.
 // Wraps the normal receivePacket function call with SYNACK specific logic,
 // checking for the right flags, sequence numbers and our testsuite-specific
@@ -228,252 +379,6 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
     }
     
     return success;
-}
-
-// Build a TCP/IP SYN packet with the given
-// ACK number, URG pointer and reserved field values
-// Packet is pass-by-reference, new values stored there
-void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
-{
-    uint32_t initial_seq = htonl(random() % 65535);
-    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
-}
-void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t initial_seq) 
-{
-    // IP packet with TCP and no payload
-    int datalen = 0;
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(initial_seq);
-    tcp->ack_seq    = htonl(syn_ack);
-    tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
-    tcp->doff       = 5;                        // Data offset 5 octets (no options)
-    tcp->ack        = 0;
-    tcp->psh        = 0;
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 1;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    tcp->urg_ptr    = htons(syn_urg);
-    recomputeTcpChecksum(ip, tcp);
-    // printPacketInfo(ip, tcp);
-}
-
-void buildTcpSyn_data(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t initial_seq,
-            char data[], int datalen) 
-{
-    // IP packet with TCP and no payload
-    char *dataStart = (char*) ip + IPHDRLEN + TCPHDRLEN;
-    memcpy(dataStart, data, datalen);
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(initial_seq);
-    tcp->ack_seq    = htonl(syn_ack);
-    tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
-    tcp->doff       = 5;                        // Data offset 5 octets (no options)
-    tcp->ack        = 0;
-    tcp->psh        = 0;
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 1;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    tcp->urg_ptr    = htons(syn_urg);
-    recomputeTcpChecksum(ip, tcp);
-    // printPacketInfo(ip, tcp);
-}
-
-void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res)
-{
-    // IP packet with TCP and no payload
-    int datalen = 0;
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(seq);
-    tcp->ack_seq    = htonl(ack_seq);
-    tcp->res1       = res & 0xF;            // 4 bits reserved field
-    tcp->doff       = 5;                        // Data offset 5 octets (no options)
-    tcp->ack        = 0;
-    tcp->psh        = 0;
-    tcp->rst        = 1;
-    tcp->urg        = 0;
-    tcp->syn        = 0;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    tcp->urg_ptr    = htons(urg);
-    recomputeTcpChecksum(ip, tcp);
-}
-void buildTcpRst_data(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res,
-            char data[], int datalen)
-{
-    // IP packet with TCP and no payload
-    char *dataStart = (char*) ip + IPHDRLEN + TCPHDRLEN;
-    memcpy(dataStart, data, datalen);
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(seq);
-    tcp->ack_seq    = htonl(ack_seq);
-    tcp->res1       = res & 0xF;            // 4 bits reserved field
-    tcp->doff       = 5;                        // Data offset 5 octets (no options)
-    tcp->ack        = 0;
-    tcp->psh        = 0;
-    tcp->rst        = 1;
-    tcp->urg        = 0;
-    tcp->syn        = 0;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    tcp->urg_ptr    = htons(urg);
-    recomputeTcpChecksum(ip, tcp);
-}
-
-// Build a TCP/IP ACK packet with the given
-// sequence numbers, everything else as standard, valid TCP
-void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote) 
-{
-    int datalen = 0;
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(seq_local);
-    tcp->ack_seq    = htonl(seq_remote);
-    tcp->doff       = 5;
-    tcp->ack        = 1;
-    tcp->psh        = 0;
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 0;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    tcp->urg_ptr    = 0;
-    recomputeTcpChecksum(ip, tcp);
-}
-
-// Build a TCP/IP FIN packet with the given
-// sequence numbers, everything else as standard, valid TCP
-void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote) 
-{
-    // IP packet with TCP and no payload
-    int datalen = 0;
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(seq_local);
-    tcp->ack_seq    = htonl(seq_remote);
-    tcp->doff       = 5;    // Data offset 5 octets (no options)
-    tcp->ack        = 1;
-    tcp->psh        = 0;
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 0;
-    tcp->fin        = 1;
-    tcp->window     = htons(TCPWINDOW);
-    recomputeTcpChecksum(ip, tcp);
-}
-
-// Build a TCP/IP data packet with the given
-// sequence numbers, reserved field value and data
-//
-// param src        Source address
-// param dst        Destination address
-// param ip         IP header
-// param tcp        TCP header
-// param seq_local  local sequence number
-// param seq_remote remote sequence number
-// param reserved   reserved field value
-// param data       byte array of data
-// param datalen    length of data to be sent
-void buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote,
-            uint8_t reserved,
-            char data[], int datalen)
-{
-    char *dataStart = (char*) ip + IPHDRLEN + TCPHDRLEN;
-    memcpy(dataStart, data, datalen);
-    buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-
-    tcp->source     = src->sin_port;
-    tcp->dest       = dst->sin_port;
-    tcp->seq        = htonl(seq_local);
-    tcp->ack_seq    = htonl(seq_remote);
-    tcp->res1       = reserved & 0xF;
-    tcp->doff       = 5;
-    tcp->ack        = 1;
-    tcp->psh        = (datalen > 0 ? 1 : 0);
-    tcp->rst        = 0;
-    tcp->urg        = 0;
-    tcp->syn        = 0;
-    tcp->fin        = 0;
-    tcp->window     = htons(TCPWINDOW);
-    recomputeTcpChecksum(ip, tcp);
-}
-
-void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
-    uint8_t option_kind, uint8_t option_length, char option_data[])
-
-{
-    // Find the length of data in the packet - total packet length, 
-    // minus IP header and tcp header length through daa offset
-    uint8_t data_offset = tcp->doff * 4;
-    LOGD("option: data offset (bytes) = %d", data_offset);
-    int datalen = ntohs(ip->tot_len) - IPHDRLEN - data_offset;
-    LOGD("option: data length (bytes) = %d", datalen);
-    // Will add NOP options for alignment
-    uint8_t nops = ((option_length / 4) + 1) * 4 - option_length;
-    LOGD("option: nops for the option %d = %d (length %d)", option_kind, nops, option_length);
-    // This is where the data starts
-    char *dataStart = (char*) ip + IPHDRLEN + data_offset;
-    // Once the data is moved, the appended option will start here
-    char *optionStart = dataStart;
-    if (datalen > 0) {    
-        // Move all the data by the option length
-        memmove(dataStart, dataStart + nops + option_length, datalen);
-    }
-    // Increase packet length
-    LOGD("option: prior total IP length = %d", ntohs(ip->tot_len));
-    ip->tot_len = htons(ntohs(ip->tot_len) + nops + option_length);
-    LOGD("option: total IP length with the option = %d", ntohs(ip->tot_len));
-    tcp->doff = tcp->doff + (nops + option_length) / 4;
-    LOGD("option: new data offset %d", tcp->doff);
-
-    for (int n = 0; n < nops; n++) {
-        // the NOP option
-        *(optionStart + n) = (char) 0x01;  
-    }
-    *(optionStart + nops) = (char) option_kind;
-    if (option_length >= 2) {
-        *(optionStart + nops + 1) = (char) option_length;
-        if (option_length > 2) {
-            memcpy(optionStart + nops + 2, option_data, option_length - 2);
-        }
-    }
-
-    recomputeTcpChecksum(ip, tcp);
 }
 
 // TCP handshake function, parametrised with a bunch of values for our testsuite
@@ -606,7 +511,8 @@ test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 uint8_t data_out_res, char *send_payload, int send_length)
 {
     memset(buffer, 0, BUFLEN);
-    buildTcpData(src, dst, ip, tcp, seq_local, seq_remote, data_out_res, send_payload, send_length);
+    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote, data_out_res);
+    appendData(ip, tcp, send_payload, send_length);
     if ( sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) )
         return success;
     else

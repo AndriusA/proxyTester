@@ -96,14 +96,10 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
             uint32_t initial_seq);
 
-void buildTcpSyn_data(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t initial_seq,
-            char data[], int datalen);
-
 void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
     uint8_t option_kind, uint8_t option_length, char option_data[]);
+
+void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
 
 test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
             struct iphdr *ip, struct tcphdr *tcp,
@@ -113,11 +109,6 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
 void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res);
-
-void buildTcpRst_data(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res,
-            char data[], int datalen);
 
 void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
