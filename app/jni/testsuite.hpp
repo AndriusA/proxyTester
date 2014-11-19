@@ -86,8 +86,6 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
 // returns test_complete_complex_bits + bitmap of the passed bits
 test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved);
 
-test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
-
 uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
 
 #endif

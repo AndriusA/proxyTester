@@ -43,6 +43,7 @@ public class TCPTest implements Parcelable {
     //RawSocketTester Proxy tests
 
     public static final int PROXY_DOUBLE_SYN = 41;
+    public static final int PROXY_SACK_GAP = 42;
 
     //Netalyzr tests
     public static final int CHECK_LOCAL_ADDRESS = 31;

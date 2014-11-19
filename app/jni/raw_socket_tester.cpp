@@ -25,6 +25,7 @@
 #include <android/log.h>
 
 #include "testsuite.hpp"
+#include "proxy_testsuite.hpp"
 #include "util.hpp"
 
 #ifndef TAG
@@ -59,6 +60,7 @@ enum opcode_t : uint8_t {
     GET_GLOBAL_IP = 21,
     RET_GLOBAL_IP = 22,
     PROXY_DOUBLE_SYN = 41,
+    PROXY_SACK_GAP = 42,
     RESULT_NOT_IMPLEMENTED = 51,
 };
 
@@ -183,6 +185,8 @@ int main() {
                         break;
                     case PROXY_DOUBLE_SYN:
                         result = runTest_doubleSyn(source, src_port, destination, dst_port);
+                    case PROXY_SACK_GAP:
+                        result = runTest_sackGap(source, src_port, destination, dst_port);
                     default:
                         result = test_not_implemented;
                         break;
