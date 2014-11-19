@@ -19,6 +19,7 @@ include $(CLEAR_VARS)
 TCPTESTER_SOURCES := \
         raw_socket_tester.cpp \
         util.cpp \
+        packet_builder.cpp \
         tcp_basic.cpp \
         testsuite.cpp \
         proxy_testsuite.cpp

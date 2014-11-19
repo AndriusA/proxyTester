@@ -14,25 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
  
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <errno.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <net/ethernet.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
+
 #include <chrono>
-
 #include "util.hpp"
-
-#define IPHDRLEN sizeof(struct iphdr)
-#define TCPHDRLEN sizeof(struct tcphdr)
-#define PHDRLEN sizeof(struct pseudohdr)
+#include "packet_builder.hpp"
 
 const std::chrono::seconds sock_receive_timeout_sec(10);
 
@@ -43,16 +28,6 @@ const std::chrono::seconds sock_receive_timeout_sec(10);
 #ifndef TAG
 #define TAG "TCPTester-bin"
 #endif
-
-#define TCPWINDOW (BUFLEN - IPHDRLEN - TCPHDRLEN)
-
-struct pseudohdr {
-    uint32_t src_addr;
-    uint32_t dst_addr;
-    uint8_t padding;
-    uint8_t proto;
-    uint16_t length;
-};
 
 uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp);
 uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp);
@@ -87,31 +62,9 @@ test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote, int receiveDataLength);
 
-void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res);
-
-void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t initial_seq);
-
-void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
-    uint8_t option_kind, uint8_t option_length, char option_data[]);
-
-void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
-
 test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
             struct iphdr *ip, struct tcphdr *tcp,
             struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
             uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint32_t &data_read);
-
-void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res);
-
-void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t seq_local, uint32_t seq_remote);
 
 bool sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len);
