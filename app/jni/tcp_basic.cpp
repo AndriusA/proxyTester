@@ -38,23 +38,30 @@ void buildIPHeader(struct iphdr *ip,
 // Since the checksum is a one's complement, 16-bit sum, appending
 // or prepending has no difference other than having to be careful
 // to add one zero-padding byte after data if length is not even
-uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp, int datalen) {
+uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
     // Add pseudoheader at the end of the packet for simplicity,
-    struct pseudohdr * pseudoheader;
+    struct pseudohdr *pseudoheader;
     // Need to add padding between data and pseudoheader
     // if data payload length is not a multiple of 2,
     // checksum is a 2 byte value.
+    uint8_t tcphdrlen = tcp->doff * 4;
+    int datalen = ntohs(ip->tot_len) - IPHDRLEN - tcphdrlen;
     int padding = datalen % 2 ? 1 : 0;
-    pseudoheader = (struct pseudohdr *) ( (uint8_t *) tcp + (tcp->doff*4) + datalen + padding );
+    pseudoheader = (struct pseudohdr *) ( (uint8_t *) tcp + tcphdrlen + datalen + padding );
     pseudoheader->src_addr = ip->saddr;
     pseudoheader->dst_addr = ip->daddr;
     pseudoheader->padding = 0;
     pseudoheader->proto = ip->protocol;
-    pseudoheader->length = htons((tcp->doff*4) + datalen);
+    pseudoheader->length = htons(tcphdrlen + datalen);
     // compute chekcsum from the bound of the tcp header to the appended pseudoheader
     uint16_t checksum = comp_chksum((uint16_t*) tcp,
-            (tcp->doff*4) + datalen + padding + PHDRLEN);
+            tcphdrlen + datalen + padding + PHDRLEN);
     return checksum;
+}
+
+void recomputeTcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
+    tcp->check = 0;
+    tcp->check = tcpChecksum(ip, tcp);
 }
 
 // Function very specific to our tests and relies on packet checksum
@@ -256,8 +263,7 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
     tcp->urg_ptr    = htons(syn_urg);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
+    recomputeTcpChecksum(ip, tcp);
     // printPacketInfo(ip, tcp);
 }
 
@@ -286,8 +292,7 @@ void buildTcpSyn_data(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
     tcp->urg_ptr    = htons(syn_urg);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
+    recomputeTcpChecksum(ip, tcp);
     // printPacketInfo(ip, tcp);
 }
 
@@ -312,8 +317,7 @@ void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
     tcp->urg_ptr    = htons(urg);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
+    recomputeTcpChecksum(ip, tcp);
 }
 void buildTcpRst_data(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
@@ -338,8 +342,7 @@ void buildTcpRst_data(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
     tcp->urg_ptr    = htons(urg);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
+    recomputeTcpChecksum(ip, tcp);
 }
 
 // Build a TCP/IP ACK packet with the given
@@ -364,9 +367,7 @@ void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
     tcp->urg_ptr    = 0;
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
-    // printPacketInfo(ip, tcp);
+    recomputeTcpChecksum(ip, tcp);
 }
 
 // Build a TCP/IP FIN packet with the given
@@ -391,9 +392,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->syn        = 0;
     tcp->fin        = 1;
     tcp->window     = htons(TCPWINDOW);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
-    // printPacketInfo(ip, tcp);
+    recomputeTcpChecksum(ip, tcp);
 }
 
 // Build a TCP/IP data packet with the given
@@ -431,11 +430,7 @@ void buildTcpData(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->syn        = 0;
     tcp->fin        = 0;
     tcp->window     = htons(TCPWINDOW);
-    tcp->check      = 0;
-    tcp->check      = tcpChecksum(ip, tcp, datalen);
-
-    // printPacketInfo(ip, tcp);
-    // printBufferHex((char*)ip, IPHDRLEN + TCPHDRLEN + datalen);   
+    recomputeTcpChecksum(ip, tcp);
 }
 
 void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
@@ -478,10 +473,7 @@ void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp,
         }
     }
 
-    // Recompute checksum
-    tcp->check = 0;
-    tcp->check = tcpChecksum(ip, tcp, datalen);
-    LOGD("Recomputed TCP checksum %04X", tcp->check);
+    recomputeTcpChecksum(ip, tcp);
 }
 
 // TCP handshake function, parametrised with a bunch of values for our testsuite
