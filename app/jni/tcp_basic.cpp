@@ -174,7 +174,7 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
         return ret;
     }
     
-    uint16_t received_data = ip->tot_len - IPHDRLEN - tcp->doff * 4;
+    uint16_t received_data = htons(ip->tot_len) - IPHDRLEN - tcp->doff * 4;
     seq_remote = ntohl(tcp->seq) + 1 + received_data;
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     

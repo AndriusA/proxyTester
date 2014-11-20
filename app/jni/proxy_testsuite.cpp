@@ -348,7 +348,10 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
         LOGD("Socket setup, initialising data");
     }
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    char *optionData = NULL;
+    packetModifier fn_synFields = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetModifier fn_synOptions = std::bind(appendTcpOption, 0x04, 0x02, optionData, _1, _2);
+    packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2);
     packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
     test_error handshake_res = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, fn_synExtras, fn_checkTcpSynAck);
     

@@ -55,6 +55,7 @@ struct pseudohdr {
 
 typedef std::function< test_error(struct iphdr *ip, struct tcphdr *tcp) > packetFunctor;
 typedef std::function< void(struct iphdr *ip, struct tcphdr *tcp) > packetModifier;
+void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip, struct tcphdr *tcp);
 
 void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp);
@@ -69,8 +70,8 @@ void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
             char data[], uint16_t datalen,
             struct iphdr *ip, struct tcphdr *tcp);
 
-void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
-    uint8_t option_kind, uint8_t option_length, char option_data[]);
+void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
+            struct iphdr *ip, struct tcphdr *tcp);
 
 void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
 

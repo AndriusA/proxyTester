@@ -17,6 +17,12 @@
 #include <android/log.h>
 #include "packet_builder.hpp"
 
+void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip, struct tcphdr *tcp)
+{
+    a(ip, tcp);
+    b(ip, tcp);
+}
+
 void buildIPHeader(struct iphdr *ip, 
             uint32_t source, uint32_t destination,
             uint32_t data_length)
@@ -142,7 +148,7 @@ void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcp->rst        = 1;
     tcp->res1       = res & 0xF;            // 4 bits reserved field
     tcp->urg_ptr    = htons(urg);
-    tcp->ack_seq = ack_seq;
+    tcp->ack_seq    = htonl(ack_seq);
     recomputeTcpChecksum(ip, tcp);
 }
 
@@ -158,10 +164,10 @@ void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
     tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq);
     tcpZeroFlags(tcp);
-    tcp->ack = 1;
-    tcp->ack_seq = ack_seq;
+    tcp->ack        = 1;
+    tcp->ack_seq    = htonl(ack_seq);
     recomputeTcpChecksum(ip, tcp);
-}
+}   
 void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote) 
@@ -183,13 +189,12 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     tcpZeroFlags(tcp);
     tcp->ack = 1;
     tcp->fin = 1;
-    tcp->ack_seq = seq_remote;
+    tcp->ack_seq = htonl(seq_remote);
     recomputeTcpChecksum(ip, tcp);
 }
 
-void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
-    uint8_t option_kind, uint8_t option_length, char option_data[])
-
+void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
+            struct iphdr *ip, struct tcphdr *tcp)
 {
     // Find the length of data in the packet - total packet length, 
     // minus IP header and tcp header length through daa offset
