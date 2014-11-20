@@ -91,6 +91,11 @@ test_error checkTcpSynAck_np(uint16_t synack_urg, uint16_t synack_check, uint8_t
 test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, 
             char *synack_payload, uint16_t synack_length, 
             struct iphdr *ip, struct tcphdr *tcp);
+test_error checkData(char *expect_payload, uint16_t expect_length, struct iphdr *ip, struct tcphdr *tcp);
+
+test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
+            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck, 
+            packetModifier fn_makeRequest, packetFunctor fn_checkResponse);
 
 uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
 

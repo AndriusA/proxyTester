@@ -22,6 +22,14 @@ void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip,
     a(ip, tcp);
     b(ip, tcp);
 }
+test_error concatPacketFunctors(packetFunctor a, packetFunctor b, struct iphdr *ip, struct tcphdr *tcp)
+{
+    test_error ret;
+    ret = a(ip, tcp);
+    if (ret == success)
+        ret = b(ip, tcp);
+    return ret;
+}
 
 void buildIPHeader(struct iphdr *ip, 
             uint32_t source, uint32_t destination,
@@ -225,5 +233,15 @@ void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_dat
         }
     }
 
+    recomputeTcpChecksum(ip, tcp);
+}
+
+void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
+    tcp->res1 = (res & 0xF);
+    recomputeTcpChecksum(ip, tcp);
+}
+
+void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp) {
+    tcp->seq = htonl(ntohl(tcp->seq) + increase);
     recomputeTcpChecksum(ip, tcp);
 }
