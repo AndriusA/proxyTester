@@ -15,7 +15,10 @@
  */
 
 #include <android/log.h>
+#include <functional>
 #include "testsuite.hpp"
+
+ using namespace std::placeholders;
 
 // Setup RAW socket
 // setsockopt calls for:
@@ -51,6 +54,85 @@ test_error setupSocket(int &sock) {
     return success;
 }
 
+// Function very specific to our tests and relies on packet checksum
+// being computed in a specific way:
+//      - The sending side decides the target checksum value
+//      - Subtracts the destination IP address and port from that value
+//      - If there is an intermediate NAT, it hopefully only modifies
+//        the destination port and/or address and recomputes checksum
+//        according to RFC3022
+//      - It is sufficient to add back the (potentially new) destination address
+//        to the received checksum to obtain the sender's target one
+uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
+    uint32_t checksum = ntohs(tcp->check);
+    // Add back destination (own!) IP address and port number to undo what NAT modifies
+    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
+    checksum = csum_add(checksum, ntohs(tcp->dest));
+    LOGD("Checksum NATing recalculated: %d, %04X", checksum, checksum);
+    return (uint16_t) checksum;
+}
+
+uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp) {
+    uint32_t checksum = ntohs(tcp->check);
+    // Undo the simple NATing
+    checksum = undo_natting(ip, tcp);
+    checksum = csum_add(checksum, ntohs(tcp->seq & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((tcp->seq >> 16) & 0xFFFF));
+    checksum = csum_add(checksum, ntohs(tcp->ack_seq & 0xFFFF));
+    checksum = csum_add(checksum, ntohs((tcp->ack_seq >> 16) & 0xFFFF));
+    LOGD("Checksum NATing recalculated (Seq): %d, %04X", checksum, checksum);
+    return (uint16_t) checksum;
+}
+
+// Function that checks whether received SYNACK packet matches all the requirements:
+// - urgent pointer
+// - checksum (subject to undone natting)
+// - reserved flags
+// - expected payload
+test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, 
+            char *synack_payload, uint16_t synack_length, 
+            struct iphdr *ip, struct tcphdr *tcp) 
+{
+    if (synack_urg != 0 && ntohs(tcp->urg_ptr) != synack_urg) {
+        LOGE("SYNACK packet expected urg %04X, got: %04X", synack_urg, ntohs(tcp->urg_ptr));
+        return synack_error_urg;
+    }
+    if (synack_check != 0) {
+        uint16_t check = undo_natting(ip, tcp);
+        uint16_t check2 = undo_natting_seq(ip, tcp);
+        if (synack_check != check && synack_check != check2) {
+            LOGE("SYNACK packet expected check %04X, got: %04X or %04X", synack_check, check, check2);
+            return synack_error_check;
+        }
+    }
+    if (synack_res != 0 && synack_res != (tcp->res1 & 0xF) ) {
+        LOGE("SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xF));
+        return synack_error_res;
+    }
+
+    char *data = (char*) ip + IPHDRLEN + tcp->doff * 4;
+    uint16_t datalen = 0;
+    uint16_t data_read = ip->tot_len - IPHDRLEN - tcp->doff * 4;
+    if (synack_length > 0) {
+        if (data_read != synack_length) {
+            LOGD("SYNACK data_read different than expected");
+            return synack_error_data_length;
+        }
+        else if (memcmp(data, synack_payload, synack_length) != 0) {
+            LOGD("SYNACK data different than expected");
+            return synack_error_data;
+        }
+        LOGD("SYNACK data received as expected");
+    }
+    return success;
+}
+
+test_error checkTcpSynAck_np(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,  
+            struct iphdr *ip, struct tcphdr *tcp) {
+    return checkTcpSynAck(synack_urg, synack_check, synack_res, NULL, 0, ip, tcp);
+}
+
 // Generic function for running any test. Takes all parameters and runs the rest of the functions:
 //      1. Sets up a new socket
 //      2. Performs the parametrised three-way handshake
@@ -61,9 +143,7 @@ test_error setupSocket(int &sock) {
 //
 // return   test_failed or test_complete codes depending on the outcome
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
-            char *synack_payload, int synack_length,
+            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck,
             uint8_t data_out_res, uint8_t data_in_res,
             char *send_payload, int send_length, char *expect_payload, int expect_length)
 {
@@ -89,8 +169,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
 
-    test_error handshake_res = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, synack_payload, synack_length);
+    test_error handshake_res = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, fn_synExtras, fn_checkTcpSynAck);
 
     if (handshake_res != success)
     {
@@ -101,7 +180,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
     uint16_t receiveLength = 0;
     test_error ret = success;
-    if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
+    if (receiveData(&src, &dst, sock, ip, tcp, seq_local, seq_remote, receiveLength) == success) {
         if (expect_length > receiveLength || memcmp(data, expect_payload, expect_length) != 0) {
             LOGD("Payload wrong value, received %d data bytes:", receiveLength);
             if (receiveLength > 0)
@@ -128,17 +207,6 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         return test_complete;
 }
 
-test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
-            uint8_t data_out_res, uint8_t data_in_res,
-            char *send_payload, int send_length, char *expect_payload, int expect_length)
-{
-    return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, NULL, 0,
-        data_out_res, data_in_res, send_payload, send_length, expect_payload, expect_length);
-}
-
 test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
     uint32_t syn_ack = 0xbeef0001;
     uint16_t syn_urg = 0;
@@ -157,9 +225,12 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     expect_payload[1] = (syn_ack >> 8*2) & 0xFF;
     expect_payload[2] = (syn_ack >> 8*1) & 0xFF;
     expect_payload[3] = syn_ack & 0xFF;
+
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
     
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -181,9 +252,12 @@ test_error runTest_urg_only(uint32_t source, uint16_t src_port, uint32_t destina
     char expect_payload[expect_length];
     expect_payload[0] = (syn_urg >> 8) & 0xFF;
     expect_payload[1] = syn_urg & 0xFF;
+
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
     
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -204,8 +278,11 @@ test_error runTest_ack_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -226,8 +303,11 @@ test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destin
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -250,9 +330,11 @@ test_error runTest_ack_data(uint32_t source, uint16_t src_port, uint32_t destina
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck, synack_urg, synack_check, synack_res, synack_payload, synack_length,  _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
-        synack_payload, synack_length,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -273,8 +355,11 @@ test_error runTest_ack_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -296,8 +381,11 @@ test_error runTest_ack_checksum_incorrect_seq(uint32_t source, uint16_t src_port
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -318,8 +406,11 @@ test_error runTest_ack_checksum(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -340,8 +431,11 @@ test_error runTest_urg_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -362,8 +456,11 @@ test_error runTest_urg_checksum(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -384,8 +481,11 @@ test_error runTest_urg_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
     return runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
 }
@@ -407,14 +507,14 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t result = 0;
     uint8_t syn_res = reserved;
     uint8_t synack_res = reserved;
-    test_error res = runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
+    return runTest(source, src_port, destination, dst_port,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res == test_complete) {
-        LOGD("Reserved byte %02X passed", reserved);
-    }
-    return res;
 }
 
 test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved)
@@ -434,77 +534,12 @@ test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t des
     uint8_t result = 0;
     uint8_t data_out_res = reserved;
     uint8_t data_in_res = reserved;
-    test_error res = runTest(source, src_port, destination, dst_port,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res,
+
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    
+    return runTest(source, src_port, destination, dst_port,
+        fn_synExtras, fn_checkTcpSynAck,
         data_out_res, data_in_res,
         send_payload, send_length, expect_payload, expect_length);
-    if (res == test_complete) {
-        LOGD("Reserved byte %02X passed", reserved);
-    }
-    return res;
-}
-
-uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port)
-{
-    uint32_t syn_ack = 0;
-    uint16_t syn_urg = 0;
-    uint8_t syn_res = 0;
-    uint16_t synack_urg = 0;
-    uint16_t synack_check = 0;
-    uint8_t synack_res = 0;
-    uint8_t data_out_res = 0;
-    uint8_t data_in_res = 0;    
-    char send_payload[] = "GETMYIP";
-    int send_length = strlen(send_payload);
-
-    int sock;
-    char buffer[BUFLEN] = {0};
-    struct iphdr *ip;
-    struct tcphdr *tcp;
-    struct sockaddr_in src, dst;
-    uint32_t seq_local, seq_remote;
-    ip = (struct iphdr*) buffer;
-    tcp = (struct tcphdr*) (buffer + IPHDRLEN);
-    char *data = buffer + IPHDRLEN + TCPHDRLEN;
-
-    if (setupSocket(sock) != success) {
-        LOGE("Socket setup failed: %s", strerror(errno));
-        return 0;
-    }
-
-    src.sin_family = AF_INET;
-    src.sin_port = htons(src_port);
-    src.sin_addr.s_addr = htonl(source);
-    dst.sin_family = AF_INET;
-    dst.sin_port = htons(dst_port);
-    dst.sin_addr.s_addr = htonl(destination);
-
-    if (handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, 
-        syn_ack, syn_urg, syn_res, 
-        synack_urg, synack_check, synack_res) != success)
-    {
-        LOGE("TCP handshake failed: %s", strerror(errno));
-        return 0;
-    }
-
-    sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
-    uint16_t receiveLength = 0;
-    uint32_t global_source = 0;
-    if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
-        // Needs to be 4 bytes address
-        if (receiveLength == 4) {
-            for (int b = 0; b < 4; b++) {
-                global_source |= ( data[b] & (char)0xFF ) << (8 * (3-b));
-            }
-            LOGD("Received IP address response %d.%d.%d.%d", data[0], data[1], data[2], data[3]);
-        } else {
-            LOGE("IP address response wrong length %d", receiveLength);
-        }
-
-        if (receiveLength > 0) {
-            acknowledgeData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength);
-        }
-    }
-    shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
-    return global_source;
 }

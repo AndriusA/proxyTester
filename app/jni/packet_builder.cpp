@@ -80,13 +80,12 @@ void tcpZeroFlags(struct tcphdr *tcp) {
     tcp->fin = 0;
 }
 
-void tcpDefaultFields(struct tcphdr *tcp, uint16_t source, uint16_t dest, 
-            uint32_t seq, uint32_t ack_seq)
+void tcpDefaultFields(struct tcphdr *tcp, uint16_t source, uint16_t dest, uint32_t seq)
 {
     tcp->source     = source;
     tcp->dest       = dest;
     tcp->seq        = htonl(seq);
-    tcp->ack_seq    = htonl(ack_seq);
+    tcp->ack_seq    = htonl(0);
     tcp->res1       = 0;            
     tcp->doff       = 5;                // Data offset 5 octets (no options)
     tcp->window     = htons(TCPWINDOW);
@@ -97,27 +96,31 @@ void tcpDefaultFields(struct tcphdr *tcp, uint16_t source, uint16_t dest,
 // ACK number, URG pointer and reserved field values
 // Packet is pass-by-reference, new values stored there
 void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res) 
+            struct iphdr *ip, struct tcphdr *tcp) 
 {
     uint32_t initial_seq = htonl(random() % 65535);
-    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
+    buildTcpSyn(src, dst, ip, tcp, initial_seq);
 }
 void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t ack_seq, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t seq) 
+            struct iphdr *ip, struct tcphdr *tcp, uint32_t seq) 
 {
     // IP packet with TCP and no payload
     int datalen = 0;
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq);
     tcpZeroFlags(tcp);
     tcp->syn        = 1;
-    tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
-    tcp->urg_ptr    = htons(syn_urg);
     recomputeTcpChecksum(ip, tcp);
 }
+
+void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            struct iphdr *ip, struct tcphdr *tcp)
+{
+    tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
+    tcp->urg_ptr    = htons(syn_urg);
+    tcp->ack_seq    = htonl(syn_ack);
+    recomputeTcpChecksum(ip, tcp);
+} 
 
 void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
@@ -126,11 +129,12 @@ void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
     // IP packet with TCP and no payload
     int datalen = 0;
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq);
     tcpZeroFlags(tcp);
     tcp->rst        = 1;
     tcp->res1       = res & 0xF;            // 4 bits reserved field
     tcp->urg_ptr    = htons(urg);
+    tcp->ack_seq = ack_seq;
     recomputeTcpChecksum(ip, tcp);
 }
 
@@ -144,9 +148,10 @@ void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
 {
     int datalen = 0;
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq, ack_seq);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq);
     tcpZeroFlags(tcp);
     tcp->ack = 1;
+    tcp->ack_seq = ack_seq;
     recomputeTcpChecksum(ip, tcp);
 }
 void buildTcpAck(struct sockaddr_in *src, struct sockaddr_in *dst,
@@ -166,10 +171,11 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
     // IP packet with TCP and no payload
     int datalen = 0;
     buildIPHeader(ip, src->sin_addr.s_addr, dst->sin_addr.s_addr, datalen);
-    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq_local, seq_remote);
+    tcpDefaultFields(tcp, src->sin_port, dst->sin_port, seq_local);
     tcpZeroFlags(tcp);
     tcp->ack = 1;
     tcp->fin = 1;
+    tcp->ack_seq = seq_remote;
     recomputeTcpChecksum(ip, tcp);
 }
 

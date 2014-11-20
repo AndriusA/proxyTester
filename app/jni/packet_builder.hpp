@@ -27,6 +27,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <functional>
 
 #include "util.hpp"
 
@@ -52,14 +53,17 @@ struct pseudohdr {
     uint16_t length;
 };
 
-void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res);
+typedef std::function< test_error(struct iphdr *ip, struct tcphdr *tcp) > packetFunctor;
+typedef std::function< void(struct iphdr *ip, struct tcphdr *tcp) > packetModifier;
 
 void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
-            struct iphdr *ip, struct tcphdr *tcp,
-            uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            uint32_t initial_seq);
+            struct iphdr *ip, struct tcphdr *tcp);
+
+void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
+            struct iphdr *ip, struct tcphdr *tcp, uint32_t seq);
+
+void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            struct iphdr *ip, struct tcphdr *tcp);
 
 void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
     uint8_t option_kind, uint8_t option_length, char option_data[]);

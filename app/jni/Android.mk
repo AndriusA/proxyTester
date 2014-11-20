@@ -21,8 +21,8 @@ TCPTESTER_SOURCES := \
         util.cpp \
         packet_builder.cpp \
         tcp_basic.cpp \
-        testsuite.cpp \
-        proxy_testsuite.cpp
+        testsuite.cpp
+#        proxy_testsuite.cpp
 
 LOCAL_MODULE    	:= tcptester
 LOCAL_CPPFLAGS	 	+= -std=c++11

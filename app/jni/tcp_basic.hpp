@@ -16,6 +16,7 @@
  
 
 #include <chrono>
+#include <functional>
 #include "util.hpp"
 #include "packet_builder.hpp"
 
@@ -35,14 +36,8 @@ uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp);
 test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote,
-                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res);
-test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
-                char *synack_payload, uint16_t synack_length);
+                packetModifier fn_synExtras,
+                packetFunctor fn_checkTcpSynAck);
 
 test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
@@ -54,17 +49,12 @@ test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 uint8_t data_out_res, char *send_payload, uint16_t send_length);
 
 test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                int socket, struct iphdr *ip, struct tcphdr *tcp,
                 uint32_t &seq_local, uint32_t &seq_remote,
                 uint16_t &receiveDataLength);
 
 test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote, uint16_t receiveDataLength);
-
-test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
-            struct iphdr *ip, struct tcphdr *tcp,
-            struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
-            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint16_t &data_read);
 
 test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len);

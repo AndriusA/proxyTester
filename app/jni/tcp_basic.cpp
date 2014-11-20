@@ -17,36 +17,7 @@
 #include <android/log.h>
 #include "tcp_basic.hpp"
 
-// Function very specific to our tests and relies on packet checksum
-// being computed in a specific way:
-//      - The sending side decides the target checksum value
-//      - Subtracts the destination IP address and port from that value
-//      - If there is an intermediate NAT, it hopefully only modifies
-//        the destination port and/or address and recomputes checksum
-//        according to RFC3022
-//      - It is sufficient to add back the (potentially new) destination address
-//        to the received checksum to obtain the sender's target one
-uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp) {
-    uint32_t checksum = ntohs(tcp->check);
-    // Add back destination (own!) IP address and port number to undo what NAT modifies
-    checksum = csum_add(checksum, ntohs(ip->daddr & 0xFFFF));
-    checksum = csum_add(checksum, ntohs((ip->daddr >> 16) & 0xFFFF));
-    checksum = csum_add(checksum, ntohs(tcp->dest));
-    LOGD("Checksum NATing recalculated: %d, %04X", checksum, checksum);
-    return (uint16_t) checksum;
-}
-
-uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp) {
-    uint32_t checksum = ntohs(tcp->check);
-    // Undo the simple NATing
-    checksum = undo_natting(ip, tcp);
-    checksum = csum_add(checksum, ntohs(tcp->seq & 0xFFFF));
-    checksum = csum_add(checksum, ntohs((tcp->seq >> 16) & 0xFFFF));
-    checksum = csum_add(checksum, ntohs(tcp->ack_seq & 0xFFFF));
-    checksum = csum_add(checksum, ntohs((tcp->ack_seq >> 16) & 0xFFFF));
-    LOGD("Checksum NATing recalculated (Seq): %d, %04X", checksum, checksum);
-    return (uint16_t) checksum;
-}
+using namespace std::placeholders;
 
 // Check if the received packet is a valid one:
 // the IP addresses and port numbers match the expected ones.
@@ -141,7 +112,7 @@ test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t
 test_error receiveTcpSynAck(uint32_t seq_local, int sock, 
             struct iphdr *ip, struct tcphdr *tcp,
             struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst,
-            uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, uint16_t &data_read)
+            packetFunctor fn_checkTcpSynAck)
 {
     uint16_t packet_length = 0;
     test_error read = receivePacket(sock, ip, tcp, exp_src, exp_dst, packet_length);
@@ -149,8 +120,6 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
         LOGE("SYNACK packet read error %d", read);
         return read;
     }
-    if (packet_length >= IPHDRLEN + TCPHDRLEN)
-        data_read = packet_length - IPHDRLEN - tcp->doff * 4;
     if (!tcp->syn || !tcp->ack) {
         LOGE("Not a SYNACK packet");
         return protocol_error;
@@ -159,24 +128,8 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
         LOGE("SYNACK packet unexpected ACK number: %u, %u", seq_local, ntohl(tcp->ack_seq));
         return sequence_error;
     }
-    if (synack_urg != 0 && ntohs(tcp->urg_ptr) != synack_urg) {
-        LOGE("SYNACK packet expected urg %04X, got: %04X", synack_urg, ntohs(tcp->urg_ptr));
-        return synack_error_urg;
-    }
-    if (synack_check != 0) {
-        uint16_t check = undo_natting(ip, tcp);
-        uint16_t check2 = undo_natting_seq(ip, tcp);
-        if (synack_check != check && synack_check != check2) {
-            LOGE("SYNACK packet expected check %04X, got: %04X or %04X", synack_check, check, check2);
-            return synack_error_check;
-        }
-    }
-    if (synack_res != 0 && synack_res != (tcp->res1 & 0xF) ) {
-        LOGE("SYNACK packet expected res %02X, got: %02X", synack_res, (tcp->res1 & 0xF));
-        return synack_error_res;
-    }
     
-    return success;
+    return fn_checkTcpSynAck(ip, tcp);
 }
 
 // TCP handshake function, parametrised with a bunch of values for our testsuite
@@ -200,42 +153,28 @@ test_error receiveTcpSynAck(uint32_t seq_local, int sock,
 test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote,
-                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,
-                char *synack_payload, uint16_t synack_length)
+                packetModifier fn_synExtras,
+                packetFunctor fn_checkTcpSynAck)
 {
     test_error ret;
     seq_local = 0;
     seq_remote = 0;
-    buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res);
+    buildTcpSyn(src, dst, ip, tcp);
+    fn_synExtras(ip, tcp);
     if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
         return syn_error;
     }
     seq_local = ntohl(tcp->seq) + 1;
 
-    // Receive and verify that incoming packet source is our destination and vice-versa
-    uint16_t data_read = 0;
-    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res, data_read);
+    // Receive and verify SYNACK
+    ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, fn_checkTcpSynAck);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
         return ret;
     }
-    char *data = buffer + IPHDRLEN + tcp->doff * 4;
-    uint16_t datalen = 0;
-    if (synack_length > 0) {
-        if (data_read != synack_length) {
-            LOGD("SYNACK data_read different than expected");
-            return synack_error_data_length;
-        }
-        else if (memcmp(data, synack_payload, synack_length) != 0) {
-            LOGD("SYNACK data different than expected");
-            return synack_error_data;
-        }
-        LOGD("SYNACK data received as expected");
-        datalen = data_read;
-    }
-    seq_remote = ntohl(tcp->seq) + 1 + datalen;
+    
+    seq_remote = ntohl(tcp->seq) + 1 + 1; //FIXME
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
     buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
@@ -244,16 +183,6 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
         return ack_error;
     }
     return success;
-}
-
-test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint32_t syn_ack, uint16_t syn_urg, uint8_t syn_res,
-                uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res)
-{
-    return handshake(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote,
-        syn_ack, syn_urg, syn_res, synack_urg, synack_check, synack_res, NULL, 0);
 }
 
 // Cleanly shutdown the connection with the
@@ -312,7 +241,7 @@ test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
 }
 
 test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
+                int socket, struct iphdr *ip, struct tcphdr *tcp,
                 uint32_t &seq_local, uint32_t &seq_remote,
                 uint16_t &receiveDataLength)
 {
