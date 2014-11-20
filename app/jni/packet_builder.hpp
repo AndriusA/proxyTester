@@ -65,6 +65,10 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
 void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
             struct iphdr *ip, struct tcphdr *tcp);
 
+void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            char data[], uint16_t datalen,
+            struct iphdr *ip, struct tcphdr *tcp);
+
 void appendTcpOption(struct iphdr *ip, struct tcphdr *tcp, 
     uint8_t option_kind, uint8_t option_length, char option_data[]);
 

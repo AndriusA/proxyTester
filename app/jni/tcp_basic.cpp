@@ -174,7 +174,8 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
         return ret;
     }
     
-    seq_remote = ntohl(tcp->seq) + 1 + 1; //FIXME
+    uint16_t received_data = ip->tot_len - IPHDRLEN - tcp->doff * 4;
+    seq_remote = ntohl(tcp->seq) + 1 + received_data;
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
     buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);

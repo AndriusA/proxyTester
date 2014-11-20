@@ -18,7 +18,7 @@
 #include <functional>
 #include "testsuite.hpp"
 
- using namespace std::placeholders;
+using namespace std::placeholders;
 
 // Setup RAW socket
 // setsockopt calls for:

@@ -122,6 +122,14 @@ void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
     recomputeTcpChecksum(ip, tcp);
 } 
 
+void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
+            char data[], uint16_t datalen,
+            struct iphdr *ip, struct tcphdr *tcp)
+{
+    addSynExtras(syn_ack, syn_urg, syn_res, ip, tcp);
+    appendData(ip, tcp, data, datalen);
+}
+
 void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq, uint32_t ack_seq, uint32_t urg, uint8_t res)

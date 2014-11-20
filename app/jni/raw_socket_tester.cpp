@@ -183,10 +183,10 @@ int main() {
                     case ACK_CHECKSUM_INCORRECT_SEQ:
                         result = runTest_ack_checksum_incorrect_seq(source, src_port, destination, dst_port);
                         break;
-                    // case PROXY_DOUBLE_SYN:
-                    //     result = runTest_doubleSyn(source, src_port, destination, dst_port);
-                    // case PROXY_SACK_GAP:
-                    //     result = runTest_sackGap(source, src_port, destination, dst_port);
+                    case PROXY_DOUBLE_SYN:
+                        result = runTest_doubleSyn(source, src_port, destination, dst_port);
+                    case PROXY_SACK_GAP:
+                        result = runTest_sackGap(source, src_port, destination, dst_port);
                     default:
                         result = test_not_implemented;
                         break;
