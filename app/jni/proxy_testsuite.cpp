@@ -64,21 +64,21 @@ test_error handshake_syndata(struct sockaddr_in *src, struct sockaddr_in *dst,
     uint32_t initial_seq = htonl(random() % 65535);
     buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res, initial_seq);
     appendData(ip, tcp, send_payload, send_length);
-    if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len))) {
+    if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
-        return send_error;
+        return syn_error;
     }
     seq_local = ntohl(tcp->seq) + 1;
 
     // Receive and verify that incoming packet source is our destination and vice-versa
-    uint32_t data_read = 0;
+    uint16_t data_read = 0;
     ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res, data_read);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
         return ret;
     }
     char *data = buffer + IPHDRLEN + TCPHDRLEN;
-    int datalen = 0;
+    uint16_t datalen = 0;
     if (synack_length > 0) {
         if (data_read != synack_length) {
             LOGD("SYNACK data_read different than expected");
@@ -95,9 +95,9 @@ test_error handshake_syndata(struct sockaddr_in *src, struct sockaddr_in *dst,
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
     buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
-    if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len))) {
+    if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP handshake ACK failure: %s", strerror(errno));
-        return send_error;
+        return ack_error;
     }
     return success;
 }
@@ -113,14 +113,14 @@ test_error handshake_ackdata(struct sockaddr_in *src, struct sockaddr_in *dst,
     seq_local = 0;
     seq_remote = 0;
     buildTcpSyn(src, dst, ip, tcp, syn_ack, syn_urg, syn_res);
-    if (!sendPacket(socket, buffer, dst, ntohs(ip->tot_len))) {
+    if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
-        return send_error;
+        return syn_error;
     }
     seq_local = ntohl(tcp->seq) + 1;
 
     // Receive and verify that incoming packet source is our destination and vice-versa
-    uint32_t data_read = 0;
+    uint16_t data_read = 0;
     ret = receiveTcpSynAck(seq_local, socket, ip, tcp, dst, src, synack_urg, synack_check, synack_res, data_read);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
@@ -145,11 +145,11 @@ test_error handshake_ackdata(struct sockaddr_in *src, struct sockaddr_in *dst,
     
     char send_payload[] = "HELLO_reserved_EST";
     int send_length = strlen(send_payload);
-    if (!sendData(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote, 0, send_payload, send_length)) {
+    if (sendData(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote, 0, send_payload, send_length) != success) {
         LOGE("TCP handshake ACK failure: %s", strerror(errno));
-        return send_error;
+        return ack_error;
     }
-    int receiveLength;
+    uint16_t receiveLength;
     if (receiveData(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (receiveLength > 0) {
             acknowledgeData(src, dst, socket, ip, tcp, buffer, seq_local, seq_remote, receiveLength);
@@ -346,9 +346,9 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
 
     buildTcpAck(&src, &dst, ip_1, tcp_1, tcp_1->seq, tcp_1->ack_seq);
     tcp_1->window = 0;
-    if (!sendPacket(sock, buffer_1, &dst, ntohs(ip_1->tot_len))) {
+    if (sendPacket(sock, buffer_1, &dst, ntohs(ip_1->tot_len)) != success) {
         LOGE("TCP handshake ACK failure: %s", strerror(errno));
-        return send_error;
+        result = ack_error;
     }
 
     // char send_payload_rst[] = "CONNECTION_RESET_BY_PEER";
@@ -356,9 +356,9 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
     // buildTcpRst_data(&src2, &dst, ip_2, tcp_2, ntohl(tcp_2->seq), ntohl(tcp_2->ack_seq), 0, 0)
     // appendData(ip, tcp, send_payload_rst, send_length_rst);
     // LOGD("Send TCP RST");
-    // if (!sendPacket(sock, buffer_2, &dst, ntohs(ip_2->tot_len))) {
+    // if (sendPacket(sock, buffer_2, &dst, ntohs(ip_2->tot_len)) != success) {
     //     LOGE("TCP doubleSYN RST failure: %s", strerror(errno));
-    //     result = send_error;
+    //     result = rst_send_error;
     // }
     LOGD("Cycle done");
     sleep(5);
@@ -415,15 +415,15 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
     buildTcpSyn(&src, &dst, ip, tcp, syn_ack, syn_urg, syn_res);
     // Append SACK OK option
     appendTcpOption(ip, tcp, 0x04, 0x02, NULL);
-    if (!sendPacket(sock, buffer, &dst, ntohs(ip->tot_len))) {
+    if (sendPacket(sock, buffer, &dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
-        return send_error;
+        return syn_error;
     }
 
     seq_local = ntohl(tcp->seq) + 1;
 
     // Receive and verify that incoming packet source is our destination and vice-versa
-    uint32_t data_read = 0;
+    uint16_t data_read;
     test_error ret = receiveTcpSynAck(seq_local, sock, ip, tcp, &dst, &src, synack_urg, synack_check, synack_res, data_read);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
@@ -453,7 +453,7 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
         LOGE("TCP handshake ACK failure: %s", strerror(errno));
         return send_error;
     }
-    int receiveLength;
+    uint16_t receiveLength;
     if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (receiveLength > 0) {
             acknowledgeData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength);

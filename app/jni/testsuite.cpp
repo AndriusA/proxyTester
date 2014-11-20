@@ -99,7 +99,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     }
 
     sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
-    int receiveLength = 0;
+    uint16_t receiveLength = 0;
     test_error ret = success;
     if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         if (expect_length > receiveLength || memcmp(data, expect_payload, expect_length) != 0) {
@@ -488,7 +488,7 @@ uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint
     }
 
     sendData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, data_out_res, send_payload, send_length);
-    int receiveLength = 0;
+    uint16_t receiveLength = 0;
     uint32_t global_source = 0;
     if (receiveData(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, receiveLength) == success) {
         // Needs to be 4 bytes address
