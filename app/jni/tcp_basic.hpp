@@ -43,18 +43,7 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
                 uint32_t &seq_local, uint32_t &seq_remote);
 
-test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint8_t data_out_res, char *send_payload, uint16_t send_length);
-
-test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp,
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint16_t &receiveDataLength);
-
-test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote, uint16_t receiveDataLength);
-
 test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t len);
+
+test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
+    struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst, uint16_t &length);

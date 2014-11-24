@@ -223,7 +223,7 @@ int main() {
 // iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -j DROP  && iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -m ttl --ttl-gt 60  -j ACCEPT 
 // ?? iptables -A INPUT -p tcp -s 192.95.61.161 -j DROP 
 
-// tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
+// tcpdump -nnvvvXSs 0 'tcp and host 192.95.61.161'
 
 // iptables -A INPUT -p tcp -s 192.95.61.161 -j DROP  && tcpdump -nnXSs 0 'tcp and host 192.95.61.161'
 // iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -j DROP  && iptables -t filter -A OUTPUT -p tcp --tcp-flags RST RST -d 192.95.61.161 -m ttl --ttl-lt 60  -j ACCEPT && tcpdump -nnXSs 0 'tcp and host 192.95.61.161'

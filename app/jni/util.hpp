@@ -55,6 +55,7 @@ enum test_error {
     receive_error_data_length,
     receive_error_data_value,
     receive_error_res_value,
+    option_not_found,
     receive_timeout,
     sequence_error,
     protocol_error,

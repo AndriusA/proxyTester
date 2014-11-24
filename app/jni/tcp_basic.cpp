@@ -159,7 +159,9 @@ test_error handshake(struct sockaddr_in *src, struct sockaddr_in *dst,
     test_error ret;
     seq_local = 0;
     seq_remote = 0;
+    LOGD("Build SYN packet");
     buildTcpSyn(src, dst, ip, tcp);
+    LOGD("Add SYN extras");
     fn_synExtras(ip, tcp);
     if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
@@ -228,57 +230,4 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
             LOGE("TCP FINACK ACK not received, %d", ret);
     }
     return success;
-}
-
-test_error sendData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint8_t data_out_res, char *send_payload, uint16_t send_length)
-{
-    memset(buffer, 0, BUFLEN);
-    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote, data_out_res);
-    appendData(ip, tcp, send_payload, send_length);
-    return sendPacket(socket, buffer, dst, ntohs(ip->tot_len));
-}
-
-test_error receiveData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp,
-                uint32_t &seq_local, uint32_t &seq_remote,
-                uint16_t &receiveDataLength)
-{
-    uint16_t receiveLength;
-    test_error receive;
-    receive = receivePacket(socket, ip, tcp, dst, src, receiveLength);
-    if (receive != success)
-        return receive;
-    else if (receiveLength < IPHDRLEN + TCPHDRLEN) {
-        receiveDataLength = 0;
-        return receive_error_data;
-    } 
-    receiveDataLength = receiveLength - IPHDRLEN - tcp->doff * 4;
-    // TODO: handle the new sequence numbers
-    seq_local = ntohl(tcp->ack_seq);
-    // When the ACK of a previous packet gets sent separately from the data
-    if (receiveDataLength == 0) {
-        receive = receivePacket(socket, ip, tcp, dst, src, receiveLength);
-        if (receive != success)
-            return receive;
-        else if (receiveLength == -1 || receiveLength < IPHDRLEN + TCPHDRLEN) {
-            receiveDataLength = 0;
-            return receive_error_data;
-        }
-        receiveDataLength = receiveLength - IPHDRLEN - tcp->doff * 4;
-    }
-    return success;
-}
-
-test_error acknowledgeData(struct sockaddr_in *src, struct sockaddr_in *dst,
-                int socket, struct iphdr *ip, struct tcphdr *tcp, char buffer[],
-                uint32_t &seq_local, uint32_t &seq_remote, uint16_t receiveDataLength)
-{
-    
-    seq_remote = seq_remote + receiveDataLength;
-    buildTcpAck(src, dst, ip, tcp, seq_local, seq_remote);
-    if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success)
-        return send_error;
 }

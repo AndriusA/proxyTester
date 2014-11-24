@@ -167,6 +167,10 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
     return result;
 }
 
+test_error dummyCheck(struct iphdr *ip, struct tcphdr *tcp) {
+    return success;
+}
+
 // Encode 
 test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
     uint32_t syn_ack = 0;
@@ -187,14 +191,25 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
     packetModifier fn_synOptions = std::bind(appendTcpOption, 0x04, 0x02, optionData, _1, _2);
     packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2);
     // SYNACK checking
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    packetFunctor fn_checkTcpSynAckValues = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    packetFunctor fn_checkSACK = std::bind(hasTcpOption, 0x04, _1, _2);
+    packetFunctor fn_checkTcpSynAck = std::bind(concatPacketFunctors, fn_checkTcpSynAckValues, fn_checkSACK, _1, _2);
     // Send data with a gap after the handshake (trigger selective acknowledgment)
     packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
     packetModifier fn_changeSeq = std::bind(increaseSeq, 0xbe, _1, _2);
     packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_appendData, fn_changeSeq, _1, _2);
     // Check if reply indicates recognised gap
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetFunctor fn_checkResponseDummy = std::bind(dummyCheck, _1, _2);
+
+    char send_payload2[0xbe] = {'b'};
+    int send_length2 = 0xbe;
+    packetModifier fn_appendData2 = std::bind(appendData, _1, _2, send_payload2, send_length2);
+    packetFunctor fn_checkResponse2 = std::bind(checkData, expect_payload, expect_length, _1, _2);
+
+    std::queue<std::pair<packetModifier, packetFunctor> > stepSequence;
+    stepSequence.push(std::make_pair(fn_makeRequest, fn_checkResponseDummy));
+    stepSequence.push(std::make_pair(fn_appendData2, fn_checkResponse2));
     
     return runTest(source, src_port, destination, dst_port,
-        fn_synExtras, fn_checkTcpSynAck, fn_makeRequest, fn_checkData);
+        fn_synExtras, fn_checkTcpSynAck, stepSequence);
 }

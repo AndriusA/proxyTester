@@ -67,6 +67,8 @@ uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
     pseudoheader->padding = 0;
     pseudoheader->proto = ip->protocol;
     pseudoheader->length = htons(tcphdrlen + datalen);
+    LOGD("Checksum over (len %d, datalen %d)", tcphdrlen + datalen + padding + PHDRLEN, datalen);
+    printBufferHex((char*)tcp, tcphdrlen + datalen + padding + PHDRLEN);
     // compute chekcsum from the bound of the tcp header to the appended pseudoheader
     uint16_t checksum = comp_chksum((uint16_t*) tcp,
             tcphdrlen + datalen + padding + PHDRLEN);
@@ -79,9 +81,12 @@ void recomputeTcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
 }
 
 void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen) {
+    LOGD("Appending %d bytes of TCP data", datalen);
     char *dataStart = (char*) ip + IPHDRLEN + (tcp->doff * 4);
+    memset(dataStart, 0, BUFLEN - (IPHDRLEN + (tcp->doff * 4)));
     memcpy(dataStart, data, datalen);
     ip->tot_len = htons(ntohs(ip->tot_len) + datalen);
+    tcp->psh = 1;
     recomputeTcpChecksum(ip, tcp);
 }
 
@@ -204,6 +209,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
 void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
             struct iphdr *ip, struct tcphdr *tcp)
 {
+    LOGD("Appending TCP option %02X", option_kind);
     // Find the length of data in the packet - total packet length, 
     // minus IP header and tcp header length through daa offset
     uint8_t data_offset = tcp->doff * 4;
@@ -234,6 +240,35 @@ void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_dat
     }
 
     recomputeTcpChecksum(ip, tcp);
+}
+
+test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp) {
+    uint8_t *currentOption = (uint8_t*) ip + IPHDRLEN + TCPHDRLEN;
+    uint8_t optionOffset = 0;
+    bool optionFound = false;
+    uint8_t optionsLength = tcp->doff * 4 - TCPHDRLEN;
+    // Iterate through all the options, looking for the current one
+    while (optionOffset < optionsLength) {
+        uint8_t c_option_kind = *(currentOption + optionOffset);
+        // End of Option List
+        if (c_option_kind == 0)
+            break;
+        // NOP
+        if (c_option_kind == 1) {
+            optionOffset++;
+            continue;
+        }
+        if (c_option_kind == option_kind) {
+            optionFound = true;
+            break;
+        }
+        uint8_t c_optionOffset = *(currentOption + optionOffset + 1);
+        optionOffset = optionOffset + c_optionOffset + 1;
+    }
+    if (optionFound)
+        return success;
+    else
+        return option_not_found;
 }
 
 void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {

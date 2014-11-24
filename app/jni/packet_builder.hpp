@@ -74,6 +74,8 @@ void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
 void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
             struct iphdr *ip, struct tcphdr *tcp);
 
+test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp);
+
 void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
 
 
