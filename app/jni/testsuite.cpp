@@ -113,7 +113,7 @@ test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t sy
 
     char *data = (char*) ip + IPHDRLEN + tcp->doff * 4;
     uint16_t datalen = 0;
-    uint16_t data_read = ip->tot_len - IPHDRLEN - tcp->doff * 4;
+    uint16_t data_read = ntohs(ip->tot_len) - IPHDRLEN - tcp->doff * 4;
     if (synack_length > 0) {
         if (data_read != synack_length) {
             LOGD("SYNACK data_read different than expected");
@@ -202,7 +202,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
 
-    test_error handshake_ret = handshake(&src, &dst, sock, ip, tcp, buffer, conn_state->snd_nxt, conn_state->rcv_nxt, fn_synExtras, fn_checkTcpSynAck);
+    test_error handshake_ret = handshake(sock, conn_state, ip, tcp, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
 
     if (handshake_ret != success) {
         LOGE("TCP handshake failed: %s", strerror(errno));
@@ -236,7 +236,8 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         bool anythingReceived = false;
         // Receive packets until there is a packet with data or we timeout
         while ( !(receiveDataLength > 0) ) {
-            test_error ret_receive = receivePacket(sock, ip, tcp, &dst, &src, receiveLength);
+            test_error ret_receive = receivePacket(sock, ip, tcp, &dst, &src);
+            receiveLength = ntohs(ip->tot_len);
             if (ret_receive != success){
                 if (!anythingReceived) {
                     // Absolutely nothing has been received as a response to this packet
@@ -279,7 +280,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         stepSequence.pop();
     }
 
-    shutdownConnection(&src, &dst, sock, ip, tcp, buffer, conn_state->snd_nxt, conn_state->rcv_nxt);
+    shutdownConnection(&src, &dst, sock, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
 
     return success;
 }

@@ -46,8 +46,11 @@ void *threadedHandshake(void *threadarg) {
     packetModifier fn_synExtras = d->fn_synExtras;
     packetFunctor fn_checkTcpSynAck = d->fn_checkTcpSynAck;
 
+    struct tcp_opt state;
+    struct tcp_opt *conn_state = &state;
+
     LOGD("Thread %d of the parallel handshake threads", d->thread_id);
-    test_error result = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, fn_synExtras, fn_checkTcpSynAck);
+    test_error result = handshake(sock, conn_state, ip, tcp, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
     LOGD("Thread %d handshake result: %d", d->thread_id, result);
     pthread_exit((void*) result);
 }
