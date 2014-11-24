@@ -242,7 +242,7 @@ void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_dat
     recomputeTcpChecksum(ip, tcp);
 }
 
-test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp) {
+test_error hasTcpOption(uint8_t option_kind, bool& result, struct iphdr *ip, struct tcphdr *tcp) {
     uint8_t *currentOption = (uint8_t*) ip + IPHDRLEN + TCPHDRLEN;
     uint8_t optionOffset = 0;
     bool optionFound = false;
@@ -265,10 +265,14 @@ test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tc
         uint8_t c_optionOffset = *(currentOption + optionOffset + 1);
         optionOffset = optionOffset + c_optionOffset + 1;
     }
-    if (optionFound)
+    if (optionFound) {
+        result = true;
         return success;
-    else
+    }
+    else {
+        result = false;
         return option_not_found;
+    }
 }
 
 void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
@@ -279,4 +283,45 @@ void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
 void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp) {
     tcp->seq = htonl(ntohl(tcp->seq) + increase);
     recomputeTcpChecksum(ip, tcp);
+}
+
+
+void appendSackBlock(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp)
+{
+    if (!conn_state->sack_ok)
+        return;
+    conn_state->eff_sacks = conn_state->num_sacks;
+    if (conn_state->eff_sacks > 0)
+        appendTcpOption(0x05, (uint8_t)(0x02 + conn_state->eff_sacks * 8), (char*) (conn_state->selective_acks), ip, tcp);
+}
+
+void removeSackBlock(int block, struct tcp_opt *conn_state) {
+    // Remove this element by shifting others
+    for (int j = block+1; j < conn_state->num_sacks; block++) {
+        conn_state->selective_acks[j-1].start_seq = conn_state->selective_acks[j].start_seq;
+        conn_state->selective_acks[j-1].end_seq = conn_state->selective_acks[j].end_seq;
+    }
+    conn_state->num_sacks--;
+    // Zero the rest
+    int arrlen = sizeof(conn_state->selective_acks) / sizeof(conn_state->selective_acks[0]);
+    for (int j = conn_state->num_sacks; j < arrlen; j++) {
+        conn_state->selective_acks[j].start_seq = 0;
+        conn_state->selective_acks[j].end_seq = 0;
+    }
+}
+
+void insertSackBlock(tcp_sack_block block, struct tcp_opt *conn_state) {
+    int arrlen = sizeof(conn_state->selective_acks) / sizeof(conn_state->selective_acks[0]);
+    if (conn_state->num_sacks < arrlen) {
+        int pos = 0;
+        while (block.start_seq > conn_state->selective_acks[pos].start_seq && pos < conn_state->num_sacks) {
+            pos++;
+        }
+        for (int i = pos; i < arrlen - 1; i++) {
+            conn_state->selective_acks[i+1].start_seq = conn_state->selective_acks[i].start_seq;
+            conn_state->selective_acks[i+1].end_seq = conn_state->selective_acks[i].end_seq;
+        }
+        conn_state->selective_acks[pos].start_seq = block.start_seq;
+        conn_state->selective_acks[pos].end_seq = block.end_seq;
+    }
 }

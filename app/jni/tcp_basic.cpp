@@ -67,6 +67,8 @@ test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
         // Error reading from socket or reading timed out - failure either way
         if (length == -1) {
             return receive_error;
+        } else if (length < IPHDRLEN + TCPHDRLEN) {
+            return receive_error;
         }
 
         if (validPacket(ip, tcp, exp_src, exp_dst)) {
@@ -230,4 +232,49 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
             LOGE("TCP FINACK ACK not received, %d", ret);
     }
     return success;
+}
+
+void sackResponseHandler(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp)
+{
+    if (!conn_state->sack_ok)
+        return;
+
+    // Remove all blocks that have been acknowledged cumulatively
+    // the new packet has been accepted to advance the remote sequence number
+    for (int i = 0; i < conn_state->num_sacks; i++) {
+        if (conn_state->selective_acks[i].start_seq <= conn_state->rcv_nxt) {
+            if (conn_state->selective_acks[i].end_seq > conn_state->rcv_nxt) {
+                conn_state->rcv_nxt = conn_state->selective_acks[i].end_seq;
+            }
+            removeSackBlock(i, conn_state);
+        }
+    }
+    
+    uint16_t receiveDataLength = ntohs(ip->tot_len) - IPHDRLEN - tcp->doff * 4;
+    // non-continuous block received
+    if (receiveDataLength > 0 && conn_state->rcv_nxt < tcp->seq + receiveDataLength) {
+        
+        tcp_sack_block newBlock = {ntohl(tcp->seq), ntohl(tcp->seq)+receiveDataLength+1};
+        // Take the current new block and expand it while there are any overlaps with other blocks
+        for (int i = 0; i < conn_state->num_sacks; i++) {
+            bool overlaps = false;
+            if (conn_state->selective_acks[i].start_seq < newBlock.start_seq && conn_state->selective_acks[i].end_seq >= newBlock.start_seq) {
+                newBlock.start_seq = conn_state->selective_acks[i].start_seq;
+                overlaps = true;
+            }
+            if (conn_state->selective_acks[i].start_seq <= newBlock.end_seq && conn_state->selective_acks[i].end_seq > newBlock.end_seq) {
+                newBlock.end_seq = conn_state->selective_acks[i].end_seq;
+                overlaps = true;
+            }
+            if (overlaps)
+                removeSackBlock(i, conn_state);
+        }        
+        // The new block expands currently ACKed data
+        if (conn_state->rcv_nxt < newBlock.end_seq && conn_state->rcv_nxt >= newBlock.start_seq) {
+            conn_state->rcv_nxt = newBlock.end_seq;
+        } else {
+            // Add to the back and sort to be ordered
+            insertSackBlock(newBlock, conn_state);
+        }
+    }
 }

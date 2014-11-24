@@ -20,8 +20,6 @@
 
 using namespace std::placeholders;
 
-typedef std::pair<uint32_t, uint32_t> SeqInterval;
-
 // Setup RAW socket
 // setsockopt calls for:
 //      - allowing to manipulate full packet down to IP layer (IPPROTO_IP, IP_HDRINCL)
@@ -161,30 +159,6 @@ test_error checkRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
     }
 }
 
-bool overlaps (const SeqInterval& a, const SeqInterval& b) { 
-    if (b.first >= a.first && b.first <= a.second) {
-        return true;
-    }
-    if (b.second >= a.first && b.second <= a.second) {
-        return true;
-    }
-    return false;
-}
-
-void appendSackBlock(std::list<SeqInterval> sacked_blocks, struct iphdr *ip, struct tcphdr *tcp) {
-    char blocks[3*8] = {};
-    int added = 0;
-    for (SeqInterval block : sacked_blocks) {
-        memcpy(&block.first, blocks + added*8, sizeof(uint32_t));
-        memcpy(&block.second, blocks + added*8+4, sizeof(uint32_t));
-        added++;
-        if (added >= 3)
-            break;
-    }
-    if (added > 0)
-        appendTcpOption(0x05, (uint8_t)(0x02+added*8), blocks, ip, tcp);
-}
-
 // Generic function for running any test. Takes all parameters and runs the rest of the functions:
 //      1. Sets up a new socket
 //      2. Performs the parametrised three-way handshake
@@ -210,8 +184,9 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     char buffer[BUFLEN] = {0};
     struct iphdr *ip;
     struct tcphdr *tcp;
+    struct tcp_opt state;
+    struct tcp_opt *conn_state = &state;
     struct sockaddr_in src, dst;
-    uint32_t seq_local, seq_remote;
     ip = (struct iphdr*) buffer;
     tcp = (struct tcphdr*) (buffer + IPHDRLEN);
 
@@ -227,7 +202,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
 
-    test_error handshake_ret = handshake(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote, fn_synExtras, fn_checkTcpSynAck);
+    test_error handshake_ret = handshake(&src, &dst, sock, ip, tcp, buffer, conn_state->snd_nxt, conn_state->rcv_nxt, fn_synExtras, fn_checkTcpSynAck);
 
     if (handshake_ret != success) {
         LOGE("TCP handshake failed: %s", strerror(errno));
@@ -237,9 +212,8 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     }
 
     char dataBuffer[BUFLEN] = {0};
-    uint32_t remote_isn = seq_remote;
-    std::list<SeqInterval> sacked_blocks;
-    bool sackEnabled = false;
+    uint32_t remote_isn = conn_state->rcv_nxt;
+    conn_state->sack_ok = 0;
 
     while (!stepSequence.empty()) {
         std::pair<packetModifier, packetFunctor> operations = stepSequence.front();
@@ -251,7 +225,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         // Think through how to change the receive data function to allow SACK'ing of data
         // (ACKing from the receiving function itself, deciding whether to ACK based on a passed functor?)
         LOGD("Send request");
-        buildTcpAck(&src, &dst, ip, tcp, seq_local, seq_remote);
+        buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
         f_makeRequest(ip, tcp);
         sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
 
@@ -262,83 +236,50 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         bool anythingReceived = false;
         // Receive packets until there is a packet with data or we timeout
         while ( !(receiveDataLength > 0) ) {
-            test_error receive = receivePacket(sock, ip, tcp, &dst, &src, receiveLength);
-            if (receive != success){
+            test_error ret_receive = receivePacket(sock, ip, tcp, &dst, &src, receiveLength);
+            if (ret_receive != success){
                 if (!anythingReceived) {
                     // Absolutely nothing has been received as a response to this packet
                     // assume failure
-                    return receive;
+                    return ret_receive;
                 } else {
-                    // A packet (presumably an ACK has been received, but no data - fail softly)
+                    // A packet (presumably an ACK has been received previously, but no data - fail softly)
                     break;
                 }
-            } else if (receiveLength < IPHDRLEN + TCPHDRLEN) {
-                return receive_error_data;
-            }
+            } 
             receiveDataLength = receiveLength - IPHDRLEN - tcp->doff * 4;
             anythingReceived = true;
             // Advance own acknowledged data
-            if (ntohl(tcp->ack_seq) > seq_local)
-                seq_local = ntohl(tcp->ack_seq);
+            if (ntohl(tcp->ack_seq) > conn_state->snd_nxt)
+                conn_state->snd_nxt = ntohl(tcp->ack_seq);
         }
         
-        // Deal with the new data
-        uint32_t new_seq_remote = tcp->seq;
-        SeqInterval newBlock;
-        if (new_seq_remote > seq_remote) {
-            if (sackEnabled && new_seq_remote >= remote_isn) {
-                char *payload = (char*) (buffer + IPHDRLEN + tcp->doff * 4);
-                memcpy(payload, dataBuffer + new_seq_remote - remote_isn, receiveDataLength);
-                if (sackEnabled) 
-                    newBlock = std::make_pair(new_seq_remote, new_seq_remote+receiveDataLength+1);
-            }
-        } else {
-            if (seq_remote < new_seq_remote + receiveDataLength + 1)
-                seq_remote = new_seq_remote + receiveDataLength + 1;
-            char *payload = (char*) (buffer + IPHDRLEN + tcp->doff * 4);
-            memcpy(payload, dataBuffer + new_seq_remote - remote_isn, receiveDataLength);
-            if (sackEnabled)
-                newBlock = std::make_pair(remote_isn, seq_remote);
-        }
+        // Continuous block received and adds new data
+        if (ntohl(tcp->seq) <= conn_state->rcv_nxt && conn_state->rcv_nxt < ntohl(tcp->seq) + receiveDataLength + 1)
+            conn_state->rcv_nxt = ntohl(tcp->seq) + receiveDataLength + 1;
 
-        if (sackEnabled) {
-            // Take the current new block and expand it while there are any overlaps with other blocks
-            for (SeqInterval block : sacked_blocks) {
-                if (block.first < newBlock.first && block.second >= newBlock.first)
-                    newBlock.first = block.first;
-                if (block.first <= newBlock.second && block.second > newBlock.second)
-                    newBlock.second = block.second;
-            }
-            // Safely remove all overlapping blocks since the new one will cover all of them
-            std::function< bool(SeqInterval) > fn_overlaps = std::bind(overlaps, newBlock, _1);
-            sacked_blocks.remove_if(fn_overlaps);
-
-            // The new block expands currently ACKed data
-            if (seq_remote < newBlock.second && seq_remote >= newBlock.first)
-                seq_remote = newBlock.second;
-            else {
-                // Add to the back and sort to be ordered
-                sacked_blocks.push_back(newBlock);
-                sacked_blocks.sort();
-            }
-        }
-
-        // Finally, apply any custom checks to the response
+        // apply any custom checks to the response
         ret = f_checkResponse(ip, tcp);
-        if (ret != success)
+        sackResponseHandler(conn_state, ip, tcp);
+        // If response is expected or at least acceptable
+        if (ret == success || ret == response_acceptable) {
+            char *payload = (char*) (buffer + IPHDRLEN + tcp->doff * 4);
+            memcpy(payload, dataBuffer + ntohl(tcp->seq) - remote_isn, receiveDataLength);
+        } else {
+            // Test failed - response not acceptable
             return ret;
+        }
 
         // And if there was any data, ACK
         if (receiveDataLength > 0) {
-            buildTcpAck(&src, &dst, ip, tcp, seq_local, seq_remote);
-            if (sackEnabled)
-                appendSackBlock(sacked_blocks, ip, tcp);
+            buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
+            appendSackBlock(conn_state, ip, tcp);
             sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
         }
         stepSequence.pop();
     }
 
-    shutdownConnection(&src, &dst, sock, ip, tcp, buffer, seq_local, seq_remote);
+    shutdownConnection(&src, &dst, sock, ip, tcp, buffer, conn_state->snd_nxt, conn_state->rcv_nxt);
 
     return success;
 }

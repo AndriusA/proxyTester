@@ -192,7 +192,8 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
     packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2);
     // SYNACK checking
     packetFunctor fn_checkTcpSynAckValues = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetFunctor fn_checkSACK = std::bind(hasTcpOption, 0x04, _1, _2);
+    bool sackEnabled = false;
+    packetFunctor fn_checkSACK = std::bind(hasTcpOption, 0x04, std::ref(sackEnabled), _1, _2);
     packetFunctor fn_checkTcpSynAck = std::bind(concatPacketFunctors, fn_checkTcpSynAckValues, fn_checkSACK, _1, _2);
     // Send data with a gap after the handshake (trigger selective acknowledgment)
     packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);

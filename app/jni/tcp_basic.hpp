@@ -47,3 +47,5 @@ test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t
 
 test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst, uint16_t &length);
+
+void sackResponseHandler(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp);

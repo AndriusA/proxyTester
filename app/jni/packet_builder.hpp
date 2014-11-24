@@ -29,6 +29,7 @@
 #include <netinet/tcp.h>
 #include <functional>
 
+#include "tcp_opt.h"
 #include "util.hpp"
 
 #define IPHDRLEN sizeof(struct iphdr)
@@ -74,7 +75,7 @@ void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
 void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
             struct iphdr *ip, struct tcphdr *tcp);
 
-test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp);
+test_error hasTcpOption(uint8_t option_kind, bool& result, struct iphdr *ip, struct tcphdr *tcp);
 
 void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
 
@@ -98,3 +99,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
 
 void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp);
 void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp);
+
+void appendSackBlock(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp);
+void removeSackBlock(int block, struct tcp_opt *conn_state);
+void insertSackBlock(tcp_sack_block block, struct tcp_opt *conn_state);

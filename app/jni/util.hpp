@@ -39,6 +39,7 @@
 
 enum test_error {
     success,
+    response_acceptable,
     syn_error,
     synack_error,
     synack_error_urg,
