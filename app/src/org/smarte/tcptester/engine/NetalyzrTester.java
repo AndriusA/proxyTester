@@ -101,8 +101,8 @@ public class NetalyzrTester implements Runnable
         // _mtuTest = new MTUTest("checkMTU");
         // _tests.add(_mtuTest);
 
-        _hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies", _testPorts);
-        _tests.add(_hiddenProxyTest);
+        // _hiddenProxyTest = new HiddenProxyTest("checkHiddenProxies", _testPorts);
+        // _tests.add(_hiddenProxyTest);
     
         Log.d(TAG, "Netalyzr initializing tets");
         for (Test test : _tests) {
@@ -217,8 +217,8 @@ public class NetalyzrTester implements Runnable
         // sendMTU = _mtuTest.sendMTU;
         // recvMTU = _mtuTest.recvMTU;
         // mtuBottleneckAddress = _mtuTest.bottleneckIP;
-        proxiedPorts = _hiddenProxyTest.proxiedPorts;
-        unproxiedPorts = _hiddenProxyTest.unproxiedPorts;
+        // proxiedPorts = _hiddenProxyTest.proxiedPorts;
+        // unproxiedPorts = _hiddenProxyTest.unproxiedPorts;
 
         InetAddress localAddr = null;
         InetAddress mtuTestServer = null;
@@ -256,20 +256,20 @@ public class NetalyzrTester implements Runnable
         // );
 
         // Store each proxied/unproxied port in a single pair for later reporting
-        for (Integer port : proxiedPorts) {
-            netalyzrTests.add(
-                new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY, 
-                    _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, false
-                )
-            );
-        }
-        for (Integer port : unproxiedPorts) {
-            netalyzrTests.add(
-                new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY,
-                    _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, true
-                )
-            );            
-        }
+        // for (Integer port : proxiedPorts) {
+        //     netalyzrTests.add(
+        //         new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY, 
+        //             _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, false
+        //         )
+        //     );
+        // }
+        // for (Integer port : unproxiedPorts) {
+        //     netalyzrTests.add(
+        //         new TCPTest(_hiddenProxyTest.testName, TCPTest.HIDDEN_PROXY,
+        //             _hiddenProxyTest.nonResponsiveIP, port, localAddr, 0, true
+        //         )
+        //     );            
+        // }
 
         printResults();
         return netalyzrTests;
