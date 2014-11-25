@@ -28,7 +28,7 @@ struct handshake_thread_data{
     struct sockaddr_in src, dst;
     uint32_t seq_local, seq_remote;
     packetModifier fn_synExtras;
-    packetFunctor fn_checkTcpSynAck;
+    packetChecker fn_checkTcpSynAck;
 };
 
 void *threadedHandshake(void *threadarg) {
@@ -44,13 +44,13 @@ void *threadedHandshake(void *threadarg) {
     uint32_t seq_local = d->seq_local;
     uint32_t seq_remote = d->seq_remote;
     packetModifier fn_synExtras = d->fn_synExtras;
-    packetFunctor fn_checkTcpSynAck = d->fn_checkTcpSynAck;
+    packetChecker fn_checkTcpSynAck = d->fn_checkTcpSynAck;
 
     struct tcp_opt state;
     struct tcp_opt *conn_state = &state;
 
     LOGD("Thread %d of the parallel handshake threads", d->thread_id);
-    test_error result = handshake(sock, conn_state, ip, tcp, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
+    test_error result = handshake(sock, ip, tcp, conn_state, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
     LOGD("Thread %d handshake result: %d", d->thread_id, result);
     pthread_exit((void*) result);
 }
@@ -73,8 +73,8 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
     char synack_payload[] = "";
     int synack_length = 0;
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
 
     // Socket data initialisation
     int sock;
@@ -158,7 +158,7 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
     // char send_payload_rst[] = "CONNECTION_RESET_BY_PEER";
     // int send_length_rst = strlen(send_payload_rst);
     // buildTcpRst_data(&src2, &dst, ip_2, tcp_2, ntohl(tcp_2->seq), ntohl(tcp_2->ack_seq), 0, 0)
-    // appendData(ip, tcp, send_payload_rst, send_length_rst);
+    // appendData(send_payload_rst, send_length_rst, ip, tcp);
     // LOGD("Send TCP RST");
     // if (sendPacket(sock, buffer_2, &dst, ntohs(ip_2->tot_len)) != success) {
     //     LOGE("TCP doubleSYN RST failure: %s", strerror(errno));
@@ -170,7 +170,7 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
     return result;
 }
 
-test_error dummyCheck(struct iphdr *ip, struct tcphdr *tcp) {
+test_error dummyCheck(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     return success;
 }
 
@@ -189,28 +189,27 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
     int expect_length = strlen(expect_payload);
     
     // SYN with all the fields set and SACK OK option
-    packetModifier fn_synFields = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
+    packetModifier fn_synFields = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
     char *optionData = NULL;
-    packetModifier fn_synOptions = std::bind(appendTcpOption, 0x04, 0x02, optionData, _1, _2);
-    packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2);
+    packetModifier fn_synOptions = std::bind(appendTcpOption, TCPOPT_SACK_PERMITTED, TCPOLEN_SACK_PERMITTED, optionData, _1, _2, _3);
+    packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2, _3);
     // SYNACK checking
-    packetFunctor fn_checkTcpSynAckValues = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    bool sackEnabled = false;
-    packetFunctor fn_checkSACK = std::bind(hasTcpOption, 0x04, std::ref(sackEnabled), _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(concatPacketFunctors, fn_checkTcpSynAckValues, fn_checkSACK, _1, _2);
+    packetChecker fn_checkTcpSynAckValues = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetChecker fn_checkSACK = std::bind(hasTcpOption, TCPOPT_SACK_PERMITTED, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(concatPacketCheckers, fn_checkTcpSynAckValues, fn_checkSACK, _1, _2, _3);
     // Send data with a gap after the handshake (trigger selective acknowledgment)
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetModifier fn_changeSeq = std::bind(increaseSeq, 0xbe, _1, _2);
-    packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_appendData, fn_changeSeq, _1, _2);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetModifier fn_changeSeq = std::bind(increaseSeq, 0xbe, _1, _2, _3);
+    packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_appendData, fn_changeSeq, _1, _2, _3);
     // Check if reply indicates recognised gap
-    packetFunctor fn_checkResponseDummy = std::bind(dummyCheck, _1, _2);
+    packetChecker fn_checkResponseDummy = std::bind(dummyCheck, _1, _2, _3);
 
     char send_payload2[0xbe] = {'b'};
     int send_length2 = 0xbe;
-    packetModifier fn_appendData2 = std::bind(appendData, _1, _2, send_payload2, send_length2);
-    packetFunctor fn_checkResponse2 = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_appendData2 = std::bind(appendData, send_payload2, send_length2, _1, _2);
+    packetChecker fn_checkResponse2 = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
 
-    std::queue<std::pair<packetModifier, packetFunctor> > stepSequence;
+    std::queue<std::pair<packetModifier, packetChecker> > stepSequence;
     stepSequence.push(std::make_pair(fn_makeRequest, fn_checkResponseDummy));
     stepSequence.push(std::make_pair(fn_appendData2, fn_checkResponse2));
     

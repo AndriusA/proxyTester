@@ -92,7 +92,7 @@ uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp) {
 // - expected payload
 test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, 
             char *synack_payload, uint16_t synack_length, 
-            struct iphdr *ip, struct tcphdr *tcp) 
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) 
 {
     if (synack_urg != 0 && ntohs(tcp->urg_ptr) != synack_urg) {
         LOGE("SYNACK packet expected urg %04X, got: %04X", synack_urg, ntohs(tcp->urg_ptr));
@@ -129,11 +129,13 @@ test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t sy
 }
 
 test_error checkTcpSynAck_np(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,  
-            struct iphdr *ip, struct tcphdr *tcp) {
-    return checkTcpSynAck(synack_urg, synack_check, synack_res, NULL, 0, ip, tcp);
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
+    return checkTcpSynAck(synack_urg, synack_check, synack_res, NULL, 0, ip, tcp, conn_state);
 }
 
-test_error checkData(char *expect_payload, uint16_t expect_length, struct iphdr *ip, struct tcphdr *tcp) {
+test_error checkData(char *expect_payload, uint16_t expect_length, 
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) 
+{
     int receiveLength = ntohs(ip->tot_len) - IPHDRLEN - tcp->doff*4;
     char *data = (char *) ip + IPHDRLEN + tcp->doff*4;
     if (expect_length != receiveLength) {
@@ -150,7 +152,7 @@ test_error checkData(char *expect_payload, uint16_t expect_length, struct iphdr 
     }
 }
 
-test_error checkRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
+test_error checkRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     if (tcp->res1 != (res & 0xF)) {
         LOGE("Data packet reserved field wrong value: %02X, expected %02X", tcp->res1, res & 0xF);
         return receive_error_res_value;
@@ -169,16 +171,16 @@ test_error checkRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
 //
 // return   test_failed or test_complete codes depending on the outcome
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck, 
-            packetModifier fn_makeRequest, packetFunctor fn_checkResponse)
+            packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck, 
+            packetModifier fn_makeRequest, packetChecker fn_checkResponse)
 {
-    std::queue<std::pair<packetModifier, packetFunctor> > stepSequence;
+    std::queue<std::pair<packetModifier, packetChecker> > stepSequence;
     stepSequence.push(std::make_pair(fn_makeRequest, fn_checkResponse));
     return runTest(source, src_port, destination, dst_port, fn_synExtras, fn_checkTcpSynAck, stepSequence);
 }
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck, 
-            std::queue<std::pair<packetModifier, packetFunctor> > stepSequence)
+            packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck, 
+            std::queue<std::pair<packetModifier, packetChecker> > stepSequence)
 {
     int sock;
     char buffer[BUFLEN] = {0};
@@ -202,7 +204,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     dst.sin_port = htons(dst_port);
     dst.sin_addr.s_addr = htonl(destination);
 
-    test_error handshake_ret = handshake(sock, conn_state, ip, tcp, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
+    test_error handshake_ret = handshake(sock, ip, tcp, conn_state, &src, &dst, fn_synExtras, fn_checkTcpSynAck);
 
     if (handshake_ret != success) {
         LOGE("TCP handshake failed: %s", strerror(errno));
@@ -216,9 +218,9 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     conn_state->sack_ok = 0;
 
     while (!stepSequence.empty()) {
-        std::pair<packetModifier, packetFunctor> operations = stepSequence.front();
+        std::pair<packetModifier, packetChecker> operations = stepSequence.front();
         packetModifier f_makeRequest = operations.first;
-        packetFunctor f_checkResponse = operations.second;
+        packetChecker f_checkResponse = operations.second;
     
         // TODO: instead of one back and forth exchange, allow a list of paired functions:
         // [<outgoing request maker, response checker>]
@@ -226,7 +228,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         // (ACKing from the receiving function itself, deciding whether to ACK based on a passed functor?)
         LOGD("Send request");
         buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
-        f_makeRequest(ip, tcp);
+        f_makeRequest(ip, tcp, conn_state);
         sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
 
         test_error ret = success;
@@ -260,8 +262,8 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
             conn_state->rcv_nxt = ntohl(tcp->seq) + receiveDataLength + 1;
 
         // apply any custom checks to the response
-        ret = f_checkResponse(ip, tcp);
-        sackResponseHandler(conn_state, ip, tcp);
+        ret = f_checkResponse(ip, tcp, conn_state);
+        sackResponseHandler(ip, tcp, conn_state);
         // If response is expected or at least acceptable
         if (ret == success || ret == response_acceptable) {
             char *payload = (char*) (buffer + IPHDRLEN + tcp->doff * 4);
@@ -274,7 +276,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         // And if there was any data, ACK
         if (receiveDataLength > 0) {
             buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
-            appendSackBlock(conn_state, ip, tcp);
+            appendSackBlock(ip, tcp, conn_state);
             sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
         }
         stepSequence.pop();
@@ -300,10 +302,10 @@ test_error runTest_ack_only(uint32_t source, uint16_t src_port, uint32_t destina
     char expect_payload[] = { (char) ((syn_ack >> 8*3) & 0xFF), (char) ((syn_ack >> 8*2) & 0xFF),
         (char) ((syn_ack >> 8*1) & 0xFF), (char) (syn_ack & 0xFF)};
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -323,10 +325,10 @@ test_error runTest_urg_only(uint32_t source, uint16_t src_port, uint32_t destina
     uint16_t expect_length = 2;
     char expect_payload[] = {(char) ((syn_urg >> 8) & 0xFF), (char) (syn_urg & 0xFF)};
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -346,10 +348,10 @@ test_error runTest_ack_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     char expect_payload[] = "OLLEH";
     uint16_t expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -369,10 +371,10 @@ test_error runTest_plain_urg(uint32_t source, uint16_t src_port, uint32_t destin
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -394,10 +396,10 @@ test_error runTest_ack_data(uint32_t source, uint16_t src_port, uint32_t destina
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck, synack_urg, synack_check, synack_res, synack_payload, synack_length,  _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck, synack_urg, synack_check, synack_res, synack_payload, synack_length, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -417,10 +419,10 @@ test_error runTest_ack_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -441,10 +443,10 @@ test_error runTest_ack_checksum_incorrect_seq(uint32_t source, uint16_t src_port
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -464,10 +466,10 @@ test_error runTest_ack_checksum(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -487,10 +489,10 @@ test_error runTest_urg_urg(uint32_t source, uint16_t src_port, uint32_t destinat
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -510,10 +512,10 @@ test_error runTest_urg_checksum(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -533,10 +535,10 @@ test_error runTest_urg_checksum_incorrect(uint32_t source, uint16_t src_port, ui
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
     
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -554,10 +556,10 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, reserved, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, reserved, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, reserved, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, reserved, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);
@@ -577,16 +579,16 @@ test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t des
     char expect_payload[] = "OLLEH";
     int expect_length = strlen(expect_payload);
 
-    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2);
-    packetFunctor fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2);
+    packetModifier fn_synExtras = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
 
-    packetModifier fn_setRes = std::bind(setRes, reserved, _1, _2);
-    packetModifier fn_appendData = std::bind(appendData, _1, _2, send_payload, send_length);
-    packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_setRes, fn_appendData, _1, _2);
+    packetModifier fn_setRes = std::bind(setRes, reserved, _1, _2, _3);
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_setRes, fn_appendData, _1, _2, _3);
 
-    packetFunctor fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2);
-    packetFunctor fn_checkRes = std::bind(checkRes, reserved, _1, _2);
-    packetFunctor fn_checkResponse = std::bind(concatPacketFunctors, fn_checkData, fn_checkRes, _1, _2);
+    packetChecker fn_checkData = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
+    packetChecker fn_checkRes = std::bind(checkRes, reserved, _1, _2, _3);
+    packetChecker fn_checkResponse = std::bind(concatPacketCheckers, fn_checkData, fn_checkRes, _1, _2, _3);
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, fn_appendData, fn_checkData);

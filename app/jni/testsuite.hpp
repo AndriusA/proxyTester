@@ -89,18 +89,18 @@ test_error runTest_reserved_syn(uint32_t source, uint16_t src_port, uint32_t des
 test_error runTest_reserved_est(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port, uint8_t reserved);
 
 test_error checkTcpSynAck_np(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res,  
-            struct iphdr *ip, struct tcphdr *tcp);
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 test_error checkTcpSynAck(uint16_t synack_urg, uint16_t synack_check, uint8_t synack_res, 
             char *synack_payload, uint16_t synack_length, 
-            struct iphdr *ip, struct tcphdr *tcp);
-test_error checkData(char *expect_payload, uint16_t expect_length, struct iphdr *ip, struct tcphdr *tcp);
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
+test_error checkData(char *expect_payload, uint16_t expect_length, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck, 
-            packetModifier fn_makeRequest, packetFunctor fn_checkResponse);
+            packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck, 
+            packetModifier fn_makeRequest, packetChecker fn_checkResponse);
 test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port,
-            packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck, 
-            std::queue<std::pair<packetModifier, packetFunctor> > stepSequence);
+            packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck, 
+            std::queue<std::pair<packetModifier, packetChecker> > stepSequence);
 
 uint32_t getOwnIp(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port);
 

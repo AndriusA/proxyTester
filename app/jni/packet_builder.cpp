@@ -17,17 +17,20 @@
 #include <android/log.h>
 #include "packet_builder.hpp"
 
-void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip, struct tcphdr *tcp)
+void concatPacketModifiers(packetModifier a, packetModifier b, 
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
-    a(ip, tcp);
-    b(ip, tcp);
+    a(ip, tcp, conn_state);
+    b(ip, tcp, conn_state);
 }
-test_error concatPacketFunctors(packetFunctor a, packetFunctor b, struct iphdr *ip, struct tcphdr *tcp)
+
+test_error concatPacketCheckers(packetChecker a, packetChecker b, 
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
     test_error ret;
-    ret = a(ip, tcp);
+    ret = a(ip, tcp, conn_state);
     if (ret == success)
-        ret = b(ip, tcp);
+        ret = b(ip, tcp, conn_state);
     return ret;
 }
 
@@ -80,7 +83,7 @@ void recomputeTcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
     tcp->check = tcpChecksum(ip, tcp);
 }
 
-void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen) {
+void appendData(char data[], uint16_t datalen, struct iphdr *ip, struct tcphdr *tcp) {
     LOGD("Appending %d bytes of TCP data", datalen);
     char *dataStart = (char*) ip + IPHDRLEN + (tcp->doff * 4);
     memset(dataStart, 0, BUFLEN - (IPHDRLEN + (tcp->doff * 4)));
@@ -133,21 +136,13 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
 }
 
 void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            struct iphdr *ip, struct tcphdr *tcp)
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
     tcp->res1       = syn_res & 0xF;            // 4 bits reserved field
     tcp->urg_ptr    = htons(syn_urg);
     tcp->ack_seq    = htonl(syn_ack);
     recomputeTcpChecksum(ip, tcp);
 } 
-
-void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            char data[], uint16_t datalen,
-            struct iphdr *ip, struct tcphdr *tcp)
-{
-    addSynExtras(syn_ack, syn_urg, syn_res, ip, tcp);
-    appendData(ip, tcp, data, datalen);
-}
 
 void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
@@ -207,7 +202,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
 }
 
 void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
-            struct iphdr *ip, struct tcphdr *tcp)
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
     LOGD("Appending TCP option %02X", option_kind);
     // Find the length of data in the packet - total packet length, 
@@ -242,7 +237,7 @@ void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_dat
     recomputeTcpChecksum(ip, tcp);
 }
 
-test_error hasTcpOption(uint8_t option_kind, bool& result, struct iphdr *ip, struct tcphdr *tcp) {
+test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     uint8_t *currentOption = (uint8_t*) ip + IPHDRLEN + TCPHDRLEN;
     uint8_t optionOffset = 0;
     bool optionFound = false;
@@ -266,33 +261,35 @@ test_error hasTcpOption(uint8_t option_kind, bool& result, struct iphdr *ip, str
         optionOffset = optionOffset + c_optionOffset + 1;
     }
     if (optionFound) {
-        result = true;
+        if (option_kind == TCPOPT_SACK)
+            conn_state->sack_ok = true;
         return success;
     }
     else {
-        result = false;
+        if (option_kind == TCPOPT_SACK)
+            conn_state->sack_ok = false;
         return option_not_found;
     }
 }
 
-void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp) {
+void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     tcp->res1 = (res & 0xF);
     recomputeTcpChecksum(ip, tcp);
 }
 
-void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp) {
+void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     tcp->seq = htonl(ntohl(tcp->seq) + increase);
     recomputeTcpChecksum(ip, tcp);
 }
 
 
-void appendSackBlock(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp)
+void appendSackBlock(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
     if (!conn_state->sack_ok)
         return;
     conn_state->eff_sacks = conn_state->num_sacks;
     if (conn_state->eff_sacks > 0)
-        appendTcpOption(0x05, (uint8_t)(0x02 + conn_state->eff_sacks * 8), (char*) (conn_state->selective_acks), ip, tcp);
+        appendTcpOption(TCPOPT_SACK, (uint8_t)(0x02 + conn_state->eff_sacks * 4 * 2), (char*) (conn_state->selective_acks), ip, tcp, conn_state);
 }
 
 void removeSackBlock(int block, struct tcp_opt *conn_state) {

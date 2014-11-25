@@ -148,9 +148,9 @@ test_error receiveTcpSynAck(int sock, struct tcp_opt *conn_state,
 // param synack_res expected SYNACK packet reserved field value
 // return           success if handshake has been successful with all received values matching expected ones,
 //                  error code otherwise
-test_error handshake(int socket, struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp,
+test_error handshake(int socket, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state, 
                 struct sockaddr_in *src, struct sockaddr_in *dst,
-                packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck)
+                packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck)
 {
     test_error ret;
     conn_state->snd_nxt = 0;
@@ -159,7 +159,7 @@ test_error handshake(int socket, struct tcp_opt *conn_state, struct iphdr *ip, s
     LOGD("Build SYN packet");
     buildTcpSyn(src, dst, ip, tcp);
     LOGD("Add SYN extras");
-    fn_synExtras(ip, tcp);
+    fn_synExtras(ip, tcp, conn_state);
     if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP SYN packet failure: %s", strerror(errno));
         return syn_error;
@@ -169,7 +169,7 @@ test_error handshake(int socket, struct tcp_opt *conn_state, struct iphdr *ip, s
     // Receive and verify SYNACK
     ret = receiveTcpSynAck(socket, conn_state, ip, tcp, dst, src);
     if (ret == success)
-        ret = fn_checkTcpSynAck(ip, tcp);
+        ret = fn_checkTcpSynAck(ip, tcp, conn_state);
     if (ret != success) {
         LOGE("TCP SYNACK packet failure: %d, %s", ret, strerror(errno));
         return ret;
@@ -231,7 +231,7 @@ test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
     return success;
 }
 
-void sackResponseHandler(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp)
+void sackResponseHandler(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
 {
     if (!conn_state->sack_ok)
         return;

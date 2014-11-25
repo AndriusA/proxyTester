@@ -33,9 +33,9 @@ const std::chrono::seconds sock_receive_timeout_sec(10);
 uint16_t undo_natting(struct iphdr *ip, struct tcphdr *tcp);
 uint16_t undo_natting_seq(struct iphdr *ip, struct tcphdr *tcp);
 
-test_error handshake(int socket, struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp,
+test_error handshake(int socket, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state,
 				struct sockaddr_in *src, struct sockaddr_in *dst,
-                packetModifier fn_synExtras, packetFunctor fn_checkTcpSynAck);
+                packetModifier fn_synExtras, packetChecker fn_checkTcpSynAck);
 
 test_error shutdownConnection(struct sockaddr_in *src, struct sockaddr_in *dst,
                 int socket, struct iphdr *ip, struct tcphdr *tcp,
@@ -46,4 +46,4 @@ test_error sendPacket(int sock, char buffer[], struct sockaddr_in *dst, uint16_t
 test_error receivePacket(int sock, struct iphdr *ip, struct tcphdr *tcp,
     struct sockaddr_in *exp_src, struct sockaddr_in *exp_dst);
 
-void sackResponseHandler(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp);
+void sackResponseHandler(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);

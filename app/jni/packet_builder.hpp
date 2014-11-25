@@ -46,6 +46,22 @@
 
 #define TCPWINDOW (BUFLEN - IPHDRLEN - TCPHDRLEN)
 
+#define TCPOPT_EOL 0
+#define TCPOPT_NOP 1
+#define TCPOPT_MAXSEG 2
+#define TCPOLEN_MAXSEG 4
+#define TCPOPT_WINDOW 3
+#define TCPOLEN_WINDOW 3
+#define TCPOPT_SACK_PERMITTED 4
+#define TCPOLEN_SACK_PERMITTED 2
+#define TCPOPT_SACK 5                                                                                                                                                                                   
+#define TCPOPT_TIMESTAMP 8
+#define TCPOLEN_TIMESTAMP 10
+#define TCPOLEN_TSTAMP_APPA (TCPOLEN_TIMESTAMP+2)
+
+#define TCPOPT_TSTAMP_HDR (TCPOPT_NOP<<24|TCPOPT_NOP<<16|TCPOPT_TIMESTAMP<<8|TCPOLEN_TIMESTAMP)
+
+
 struct pseudohdr {
     uint32_t src_addr;
     uint32_t dst_addr;
@@ -54,10 +70,10 @@ struct pseudohdr {
     uint16_t length;
 };
 
-typedef std::function< test_error(struct iphdr *ip, struct tcphdr *tcp) > packetFunctor;
-typedef std::function< void(struct iphdr *ip, struct tcphdr *tcp) > packetModifier;
-void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip, struct tcphdr *tcp);
-test_error concatPacketFunctors(packetFunctor a, packetFunctor b, struct iphdr *ip, struct tcphdr *tcp);
+typedef std::function< test_error(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) > packetChecker;
+typedef std::function< void(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) > packetModifier;
+void concatPacketModifiers(packetModifier a, packetModifier b, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
+test_error concatPacketCheckers(packetChecker a, packetChecker b, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
 void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp);
@@ -66,18 +82,14 @@ void buildTcpSyn(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp, uint32_t seq);
 
 void addSynExtras(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            struct iphdr *ip, struct tcphdr *tcp);
-
-void addSynExtrasData(uint32_t syn_ack, uint32_t syn_urg, uint8_t syn_res,
-            char data[], uint16_t datalen,
-            struct iphdr *ip, struct tcphdr *tcp);
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
 void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_data[],
-            struct iphdr *ip, struct tcphdr *tcp);
+            struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
-test_error hasTcpOption(uint8_t option_kind, bool& result, struct iphdr *ip, struct tcphdr *tcp);
+test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
-void appendData(struct iphdr *ip, struct tcphdr *tcp, char data[], uint16_t datalen);
+void appendData(char data[], uint16_t datalen, struct iphdr *ip, struct tcphdr *tcp);
 
 
 void buildTcpRst(struct sockaddr_in *src, struct sockaddr_in *dst,
@@ -97,9 +109,9 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
             struct iphdr *ip, struct tcphdr *tcp,
             uint32_t seq_local, uint32_t seq_remote);
 
-void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp);
-void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp);
+void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
+void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
-void appendSackBlock(struct tcp_opt *conn_state, struct iphdr *ip, struct tcphdr *tcp);
+void appendSackBlock(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 void removeSackBlock(int block, struct tcp_opt *conn_state);
 void insertSackBlock(tcp_sack_block block, struct tcp_opt *conn_state);
