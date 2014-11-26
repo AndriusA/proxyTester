@@ -210,7 +210,8 @@ public class RawSocketTester implements Runnable
         // basicTests.add(new TCPTest("ACK-checksum-incorrect-seq", TCPTest.ACK_CHECKSUM_INCORRECT_SEQ));
         
         //basicTests.add(new TCPTest("Proxy-DoubleSyn", TCPTest.PROXY_DOUBLE_SYN));
-        basicTests.add(new TCPTest("Proxy-DoubleSyn", TCPTest.PROXY_SACK_GAP));
+        // basicTests.add(new TCPTest("Proxy-DoubleSyn", TCPTest.PROXY_SACK_GAP));
+        basicTests.add(new TCPTest("Proxy-DoubleSyn", TCPTest.PROXY_TIMESTAMPING));
 
         ArrayList<TCPTest> completeTests = new ArrayList<TCPTest>();
         Random rng = new Random(System.currentTimeMillis());

@@ -61,6 +61,7 @@ enum opcode_t : uint8_t {
     RET_GLOBAL_IP = 22,
     PROXY_DOUBLE_SYN = 41,
     PROXY_SACK_GAP = 42,
+    PROXY_TIMESTAMPING = 43,
     RESULT_NOT_IMPLEMENTED = 51,
 };
 
@@ -187,6 +188,8 @@ int main() {
                         result = runTest_doubleSyn(source, src_port, destination, dst_port);
                     case PROXY_SACK_GAP:
                         result = runTest_sackGap(source, src_port, destination, dst_port);
+                    case PROXY_TIMESTAMPING:
+                        result = runTest_timestamping(source, src_port, destination, dst_port);
                     default:
                         result = test_not_implemented;
                         break;

@@ -70,8 +70,8 @@ uint16_t tcpChecksum(struct iphdr *ip, struct tcphdr *tcp) {
     pseudoheader->padding = 0;
     pseudoheader->proto = ip->protocol;
     pseudoheader->length = htons(tcphdrlen + datalen);
-    LOGD("Checksum over (len %d, datalen %d)", tcphdrlen + datalen + padding + PHDRLEN, datalen);
-    printBufferHex((char*)tcp, tcphdrlen + datalen + padding + PHDRLEN);
+    // LOGD("Checksum over (len %d, datalen %d)", tcphdrlen + datalen + padding + PHDRLEN, datalen);
+    // printBufferHex((char*)tcp, tcphdrlen + datalen + padding + PHDRLEN);
     // compute chekcsum from the bound of the tcp header to the appended pseudoheader
     uint16_t checksum = comp_chksum((uint16_t*) tcp,
             tcphdrlen + datalen + padding + PHDRLEN);
@@ -223,9 +223,7 @@ void appendTcpOption(uint8_t option_kind, uint8_t option_length, char option_dat
     ip->tot_len = htons(ntohs(ip->tot_len) + nops + option_length);
     tcp->doff = tcp->doff + (nops + option_length) / 4;
 
-    for (int n = 0; n < nops; n++) {
-        *(optionStart + n) = (char) 0x01;  
-    }
+    memset(optionStart, TCPOPT_NOP, nops);
     *(optionStart + nops) = (char) option_kind;
     if (option_length >= 2) {
         *(optionStart + nops + 1) = (char) option_length;
@@ -263,11 +261,25 @@ test_error hasTcpOption(uint8_t option_kind, struct iphdr *ip, struct tcphdr *tc
     if (optionFound) {
         if (option_kind == TCPOPT_SACK)
             conn_state->sack_ok = true;
+        if (option_kind == TCPOPT_TIMESTAMP) {
+            conn_state->tstamp_ok = true;
+            uint32_t TSval = 0;
+            TSval = ntohl(*(uint32_t *) (currentOption + optionOffset + 1 + 1));
+            // FIXME: rcv_nxt not completely correct
+            // should be SEG.TSval >= TS.Recent and SEG.SEQ <= Last.ACK.sent
+            LOGD("Check for timestamp: %u, seq %u", TSval, ntohl(tcp->seq));
+            if ((TSval >= conn_state->ts_recent && ntohl(tcp->seq) <= conn_state->rcv_nxt-1) || tcp->syn) {
+                conn_state->ts_recent = TSval;
+                LOGD("New ts_recent %u", conn_state->ts_recent);
+            }
+        }
         return success;
     }
     else {
         if (option_kind == TCPOPT_SACK)
             conn_state->sack_ok = false;
+        if (option_kind == TCPOPT_TIMESTAMP)
+            conn_state->tstamp_ok = false;
         return option_not_found;
     }
 }
@@ -290,6 +302,18 @@ void appendSackBlock(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_
     conn_state->eff_sacks = conn_state->num_sacks;
     if (conn_state->eff_sacks > 0)
         appendTcpOption(TCPOPT_SACK, (uint8_t)(0x02 + conn_state->eff_sacks * 4 * 2), (char*) (conn_state->selective_acks), ip, tcp, conn_state);
+}
+
+void appendTimestamp(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state)
+{
+    if (!conn_state->tstamp_ok)
+        return;
+    char optionData[8];
+    uint32_t tsval = htonl(conn_state->rcv_tsval);
+    uint32_t tsrecent = htonl(conn_state->ts_recent);
+    memcpy(optionData, &tsval, sizeof(tsval));
+    memcpy(optionData+sizeof(conn_state->rcv_tsval), &tsrecent, sizeof(tsrecent));
+    appendTcpOption(TCPOPT_TIMESTAMP, TCPOLEN_TIMESTAMP, optionData, ip, tcp, conn_state);
 }
 
 void removeSackBlock(int block, struct tcp_opt *conn_state) {

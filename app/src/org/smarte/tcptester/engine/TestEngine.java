@@ -142,6 +142,10 @@ public class TestEngine extends AsyncTask<Void, Integer, Integer>
             }
         }
         
+        if (netalyzrTester.localAddress.equals("0.0.0.0")) {
+            ret = TestEngine.TESTSUITE_ERROR_NETWORK;
+            return ret;
+        }
         mUUID = netalyzrTester.UUID;
         RawSocketTester rawSocketTester = new RawSocketTester(mActivity, mHandler, 
             TestServer, TestPorts, netalyzrTester.localAddress

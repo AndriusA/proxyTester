@@ -173,8 +173,20 @@ test_error runTest_doubleSyn(uint32_t source, uint16_t src_port, uint32_t destin
 test_error dummyCheck(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
     return success;
 }
+void delay(int delay, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
+    sleep(delay);
+}
 
-// Encode 
+void addTimestampOption(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state) {
+    uint32_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    conn_state->rcv_tsval = milliseconds_since_epoch;
+    conn_state->ts_recent = 0;
+    char optionData[8];
+    memcpy(optionData, &conn_state->rcv_tsval, sizeof(conn_state->rcv_tsval));
+    memcpy(optionData+sizeof(conn_state->rcv_tsval), &conn_state->ts_recent, sizeof(conn_state->ts_recent));
+    appendTcpOption(TCPOPT_TIMESTAMP, TCPOLEN_TIMESTAMP, optionData, ip, tcp, conn_state);
+}
+
 test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
     uint32_t syn_ack = 0;
     uint16_t syn_urg = 0;
@@ -204,14 +216,70 @@ test_error runTest_sackGap(uint32_t source, uint16_t src_port, uint32_t destinat
     // Check if reply indicates recognised gap
     packetChecker fn_checkResponseDummy = std::bind(dummyCheck, _1, _2, _3);
 
-    char send_payload2[0xbe] = {'b'};
-    int send_length2 = 0xbe;
-    packetModifier fn_appendData2 = std::bind(appendData, send_payload2, send_length2, _1, _2);
-    packetChecker fn_checkResponse2 = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
+    char send_payload2[0xBE];
+    memset(send_payload2, 'a', 0xBE);
+    int send_length2 = 0xBE;
+    packetModifier fn_appendData2   = std::bind(appendData, send_payload2, send_length2, _1, _2);
+    packetModifier fn_changeSeq2    = std::bind(increaseSeq, 0x02, _1, _2, _3);
+    packetModifier fn_sendData      = std::bind(concatPacketModifiers, fn_appendData2, fn_changeSeq2, _1, _2, _3);
+    packetModifier fn_sleeper       = std::bind(delay, 5, _1, _2, _3);
+    packetModifier fn_makeRequest2  = std::bind(concatPacketModifiers, fn_sendData, fn_sleeper, _1, _2, _3);
+
+    char send_payload3[0x02];
+    memset(send_payload3, 'b', 0x02);
+    int send_length3 = 0x02;
+    packetModifier fn_appendData3   = std::bind(appendData, send_payload3, send_length3, _1, _2);
+    packetChecker fn_checkResponse3 = std::bind(checkData, expect_payload, expect_length, _1, _2, _3);
 
     std::queue<std::pair<packetModifier, packetChecker> > stepSequence;
     stepSequence.push(std::make_pair(fn_makeRequest, fn_checkResponseDummy));
-    stepSequence.push(std::make_pair(fn_appendData2, fn_checkResponse2));
+    stepSequence.push(std::make_pair(fn_makeRequest2, fn_checkResponseDummy));
+    stepSequence.push(std::make_pair(fn_appendData3, fn_checkResponse3));
+    
+    return runTest(source, src_port, destination, dst_port,
+        fn_synExtras, fn_checkTcpSynAck, stepSequence);
+}
+
+test_error runTest_timestamping(uint32_t source, uint16_t src_port, uint32_t destination, uint16_t dst_port) {
+    uint32_t syn_ack = 0;
+    uint16_t syn_urg = 0;
+    uint8_t syn_res = 0;
+    uint16_t synack_urg = 0;
+    uint16_t synack_check = 0;
+    uint8_t synack_res = 0;
+    
+    char send_payload[] = "HELLO_timestamp";
+    int send_length = strlen(send_payload);
+    char expect_payload[] = "OLLEH";
+    int expect_length = strlen(expect_payload);
+    
+    // SYN with all the fields set and SACK OK option
+    packetModifier fn_synFields = std::bind(addSynExtras, syn_ack, syn_urg, syn_res, _1, _2, _3);
+    packetModifier fn_synOptions = std::bind(addTimestampOption, _1, _2, _3);
+    packetModifier fn_synExtras = std::bind(concatPacketModifiers, fn_synFields, fn_synOptions, _1, _2, _3);
+    // SYNACK checking
+    packetChecker fn_checkTcpSynAckValues = std::bind(checkTcpSynAck_np, synack_urg, synack_check, synack_res, _1, _2, _3);
+    packetChecker fn_checkSACK = std::bind(hasTcpOption, TCPOPT_TIMESTAMP, _1, _2, _3);
+    packetChecker fn_checkTcpSynAck = std::bind(concatPacketCheckers, fn_checkTcpSynAckValues, fn_checkSACK, _1, _2, _3);
+
+
+    // Send data with a gap after the handshake (trigger selective acknowledgment)
+    packetModifier fn_appendData = std::bind(appendData, send_payload, send_length, _1, _2);
+    packetModifier fn_changeSeq = std::bind(increaseSeq, 0xbe, _1, _2, _3);
+    packetModifier fn_makeRequest = std::bind(concatPacketModifiers, fn_appendData, fn_changeSeq, _1, _2, _3);
+    // Check if reply indicates recognised gap
+    packetChecker fn_checkResponseDummy = std::bind(dummyCheck, _1, _2, _3);
+
+    int send_length2 = 0xBE;
+    char send_payload2[0xBE] = {0};
+    memset(send_payload2, 'a', send_length2);
+    packetModifier fn_appendData2   = std::bind(appendData, send_payload2, send_length2, _1, _2);
+    packetModifier fn_sleeper       = std::bind(delay, 5, _1, _2, _3);
+    packetModifier fn_makeRequest2  = std::bind(concatPacketModifiers, fn_appendData2, fn_sleeper, _1, _2, _3);
+
+    std::queue<std::pair<packetModifier, packetChecker> > stepSequence;
+    stepSequence.push(std::make_pair(fn_makeRequest, fn_checkResponseDummy));
+    stepSequence.push(std::make_pair(fn_makeRequest2, fn_checkResponseDummy));
     
     return runTest(source, src_port, destination, dst_port,
         fn_synExtras, fn_checkTcpSynAck, stepSequence);

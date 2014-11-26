@@ -112,6 +112,7 @@ void buildTcpFin(struct sockaddr_in *src, struct sockaddr_in *dst,
 void setRes(uint8_t res, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 void increaseSeq(uint32_t increase, struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 
+void appendTimestamp(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 void appendSackBlock(struct iphdr *ip, struct tcphdr *tcp, struct tcp_opt *conn_state);
 void removeSackBlock(int block, struct tcp_opt *conn_state);
 void insertSackBlock(tcp_sack_block block, struct tcp_opt *conn_state);

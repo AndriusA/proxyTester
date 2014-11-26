@@ -180,6 +180,7 @@ test_error handshake(int socket, struct iphdr *ip, struct tcphdr *tcp, struct tc
     LOGD("SYNACK \tSeq: %zu \tAck: %zu\n", ntohl(tcp->seq), ntohl(tcp->ack_seq));
     
     buildTcpAck(src, dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
+    appendTimestamp(ip, tcp, conn_state);
     if (sendPacket(socket, buffer, dst, ntohs(ip->tot_len)) != success) {
         LOGE("TCP handshake ACK failure: %s", strerror(errno));
         return ack_error;

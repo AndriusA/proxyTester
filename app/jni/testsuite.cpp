@@ -216,18 +216,18 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
     char dataBuffer[BUFLEN] = {0};
     uint32_t remote_isn = conn_state->rcv_nxt;
     conn_state->sack_ok = 0;
-
+    int step = 0;
     while (!stepSequence.empty()) {
         std::pair<packetModifier, packetChecker> operations = stepSequence.front();
         packetModifier f_makeRequest = operations.first;
         packetChecker f_checkResponse = operations.second;
     
-        // TODO: instead of one back and forth exchange, allow a list of paired functions:
-        // [<outgoing request maker, response checker>]
-        // Think through how to change the receive data function to allow SACK'ing of data
-        // (ACKing from the receiving function itself, deciding whether to ACK based on a passed functor?)
-        LOGD("Send request");
+        LOGD("STEP %d: Send request", step);
         buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
+        uint32_t ts_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>
+            (std::chrono::system_clock::now().time_since_epoch()).count();
+        conn_state->rcv_tsval = ts_timestamp;
+        appendTimestamp(ip, tcp, conn_state);
         f_makeRequest(ip, tcp, conn_state);
         sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
 
@@ -237,6 +237,7 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         uint16_t newDataLength = 0;
         bool anythingReceived = false;
         // Receive packets until there is a packet with data or we timeout
+        LOGD("STEP %d: Receive response", step);
         while ( !(receiveDataLength > 0) ) {
             test_error ret_receive = receivePacket(sock, ip, tcp, &dst, &src);
             receiveLength = ntohs(ip->tot_len);
@@ -244,14 +245,18 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
                 if (!anythingReceived) {
                     // Absolutely nothing has been received as a response to this packet
                     // assume failure
+                    LOGD("STEP %d: Failure receiving any response", step);
                     return ret_receive;
                 } else {
+                    LOGD("STEP %d: Received an empty response", step);
                     // A packet (presumably an ACK has been received previously, but no data - fail softly)
                     break;
                 }
             } 
             receiveDataLength = receiveLength - IPHDRLEN - tcp->doff * 4;
             anythingReceived = true;
+            LOGD("STEP %d: check for timestamp option", step);
+            hasTcpOption(TCPOPT_TIMESTAMP, ip, tcp, conn_state);
             // Advance own acknowledged data
             if (ntohl(tcp->ack_seq) > conn_state->snd_nxt)
                 conn_state->snd_nxt = ntohl(tcp->ack_seq);
@@ -259,27 +264,33 @@ test_error runTest(uint32_t source, uint16_t src_port, uint32_t destination, uin
         
         // Continuous block received and adds new data
         if (ntohl(tcp->seq) <= conn_state->rcv_nxt && conn_state->rcv_nxt < ntohl(tcp->seq) + receiveDataLength + 1)
-            conn_state->rcv_nxt = ntohl(tcp->seq) + receiveDataLength + 1;
+            conn_state->rcv_nxt = ntohl(tcp->seq) + receiveDataLength;
 
+        LOGD("STEP %d: Check response", step);
         // apply any custom checks to the response
         ret = f_checkResponse(ip, tcp, conn_state);
         sackResponseHandler(ip, tcp, conn_state);
         // If response is expected or at least acceptable
         if (ret == success || ret == response_acceptable) {
+            LOGD("STEP %d: Saving %d bytes of data", step, receiveDataLength);
             char *payload = (char*) (buffer + IPHDRLEN + tcp->doff * 4);
             memcpy(payload, dataBuffer + ntohl(tcp->seq) - remote_isn, receiveDataLength);
         } else {
             // Test failed - response not acceptable
+            LOGD("STEP %d: Test failed, response not acceptable", step);
             return ret;
         }
 
         // And if there was any data, ACK
         if (receiveDataLength > 0) {
+            LOGD("STEP %d: Acknowledging data", step);
             buildTcpAck(&src, &dst, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
             appendSackBlock(ip, tcp, conn_state);
+            appendTimestamp(ip, tcp, conn_state);
             sendPacket(sock, buffer, &dst, ntohs(ip->tot_len));
         }
         stepSequence.pop();
+        step++;
     }
 
     shutdownConnection(&src, &dst, sock, ip, tcp, conn_state->snd_nxt, conn_state->rcv_nxt);
